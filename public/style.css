@@ -278,7 +278,11 @@ h2 { margin: var(--ui-space-gap-lg) 0 var(--ui-space-gap-sm); font: var(--ui-typ
 
 /* ------------------------------------------------------------ menu sections */
 
-#panel summary { cursor: pointer; min-height: var(--ui-size-touch); display: flex; align-items: center; gap: var(--ui-space-gap-xs); }
+#panel summary { cursor: pointer; min-height: var(--ui-size-touch); display: flex; align-items: center; gap: var(--ui-space-gap-xs); list-style: none; }
+#panel summary::-webkit-details-marker { display: none; }
+/* Folded or open: a chevron at the end of each section header, turning when open. */
+.summary-chevron { flex: none; margin-left: auto; color: var(--ui-content-secondary); transition: transform var(--ui-motion-duration-base) var(--ui-motion-easing-standard); }
+details[open] > summary > .summary-chevron { transform: rotate(180deg); }
 #panel summary > h2 { display: inline; margin: 0; }
 #panel details > summary { margin: var(--ui-space-gap-xs) 0 var(--ui-space-gap-xs); color: var(--ui-content-secondary); }
 #bus-lines summary,

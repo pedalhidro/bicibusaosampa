@@ -1072,7 +1072,8 @@ function highlightBus(bus) {
   tappedBus = bus ? busId(bus) : null;
   for (const [id, marker] of busMarkers) markTapped(marker, id);
   highlighted = line ? { code: line.code, sentido: line.routes.some((r) => r.sentido === bus.sentido) ? bus.sentido : null } : null;
-  busFocus = line ? { buses: new Set([line.code]), rails: planFocus?.rails ?? null } : null;
+  // Rail lines fade too, except those of a planned trip on the map.
+  busFocus = line ? { buses: new Set([line.code]), rails: planFocus?.rails ?? new Set() } : null;
   // Stations, terminals and bike parking fade too (style.css), as with a planned route.
   map.getContainer().classList.toggle('bus-focus', !!line);
   applyFocus();
