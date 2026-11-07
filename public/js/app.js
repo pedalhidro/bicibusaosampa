@@ -4,6 +4,7 @@ import { headingOfMove, headingOnRoute, iconTransform } from './heading.js';
 import { DEFAULT_VIEW, initLocate } from './locate.js';
 import { offsetPolylineClass } from './offset.js';
 import { ACCESS, parkingStatus } from './parking.js';
+import { initIntent } from './intent.js';
 import { initPlanner } from './planner.js';
 import { railStatus as lineStatus } from './rail.js';
 import { bikeStatus, describeTime } from './schedule.js';
@@ -1049,6 +1050,30 @@ initPlanner({
   sheetInsets,
   railLines: lineByRef,
   getBuses: () => (state.busesLoaded && !state.busError ? state.buses : null),
+});
+
+/** Shows exactly the overlay layers in `keys` (TOGGLES keys), and remembers that. */
+function setLayers(keys) {
+  for (const [key, , layer] of TOGGLES) {
+    const on = keys.includes(key);
+    if (on && !map.hasLayer(layer)) { layer.addTo(map); map.fire('overlayadd', { layer }); }
+    else if (!on && map.hasLayer(layer)) { layer.remove(); map.fire('overlayremove', { layer }); }
+  }
+  rememberLayers();
+  buildLayerRows();
+}
+
+// The welcome screen and the Ajustes tab (intent.js). A shared trip link already says
+// what the person wants: no welcome screen over it.
+initIntent({
+  setLayers,
+  openPanel: () => {
+    setSheetOpen('panel', true);
+    $('#plan-details').open = true;
+    document.querySelector('#plan-stops li:last-child input')?.focus();
+  },
+  openLayers: () => setSheetOpen('layers-panel', true),
+  skipWelcome: /(^|[#&])p=/.test(location.hash),
 });
 
 renderClock();

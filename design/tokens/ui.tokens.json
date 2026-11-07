@@ -8,8 +8,13 @@
         "$description": "Texto e símbolos sobre fundo colorido: badges de linha, pins, toast.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["text", "icon"],
-            "avoid": ["texto sobre os fundos da interface (ui.surface.*)"],
+            "usage": [
+              "text",
+              "icon"
+            ],
+            "avoid": [
+              "texto sobre os fundos da interface (ui.surface.*)"
+            ],
             "contrast": [
               {
                 "against": "ui.toast.surface",
@@ -62,7 +67,9 @@
         "$description": "Fundo do toast (\"Origem marcada no mapa · Desfazer\").",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["background"]
+            "usage": [
+              "background"
+            ]
           }
         }
       }
@@ -74,7 +81,9 @@
         "$description": "Aro das bolinhas de status na legenda e nas listas.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["border"]
+            "usage": [
+              "border"
+            ]
           }
         }
       }
@@ -104,8 +113,12 @@
         "$description": "Painéis e botões flutuando sobre o mapa. Nunca em ícones do mapa: no celular cada sombra é repintada a cada quadro.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["shadow"],
-            "avoid": ["ícones do mapa"]
+            "usage": [
+              "shadow"
+            ],
+            "avoid": [
+              "ícones do mapa"
+            ]
           }
         }
       },
@@ -132,8 +145,12 @@
         "$description": "O que pede atenção acima de tudo: o aviso de nova versão.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["shadow"],
-            "avoid": ["ícones do mapa"]
+            "usage": [
+              "shadow"
+            ],
+            "avoid": [
+              "ícones do mapa"
+            ]
           }
         }
       },
@@ -160,7 +177,9 @@
         "$description": "Pins A/B/parada e o marcador de troca de modo. São poucos na tela, então a sombra não pesa.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["shadow"]
+            "usage": [
+              "shadow"
+            ]
           }
         }
       },
@@ -187,7 +206,9 @@
         "$description": "Sombra do texto dos badges de linha, para o branco ler sobre o amarelo e o laranja.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["text-shadow"]
+            "usage": [
+              "text-shadow"
+            ]
           }
         }
       }
@@ -200,7 +221,9 @@
           "$description": "Fonte do sistema: zero download, e o texto fica com a cara do celular de quem usa.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         }
@@ -212,7 +235,9 @@
           "$description": "Texto corrido.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         },
@@ -221,7 +246,9 @@
           "$description": "Destaque dentro do texto: nomes de linha, rótulos, a opção escolhida.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         },
@@ -230,7 +257,9 @@
           "$description": "Títulos, badges e o que precisa saltar.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         }
@@ -243,7 +272,10 @@
         "$description": "Lado mínimo de tudo que se toca (Apple HIG: 44 pt).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["width", "height"]
+            "usage": [
+              "width",
+              "height"
+            ]
           }
         }
       },
@@ -253,7 +285,9 @@
           "$description": "Altura dos botões de zoom do mapa.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["height"]
+              "usage": [
+                "height"
+              ]
             }
           }
         },
@@ -262,7 +296,9 @@
           "$description": "Botões secundários em pílula (Compartilhar, Desfazer): menores que a área de toque, mas sempre dentro de uma linha que tem 44 px.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["height"]
+              "usage": [
+                "height"
+              ]
             }
           }
         }
@@ -273,7 +309,10 @@
           "$description": "Ícones dentro de texto e listas.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["width", "height"]
+              "usage": [
+                "width",
+                "height"
+              ]
             }
           }
         },
@@ -282,7 +321,10 @@
           "$description": "Ícones de botão.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["width", "height"]
+              "usage": [
+                "width",
+                "height"
+              ]
             }
           }
         },
@@ -291,7 +333,10 @@
           "$description": "Ícones de destaque, pins da lista e caixas de seleção.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["width", "height"]
+              "usage": [
+                "width",
+                "height"
+              ]
             }
           }
         }
@@ -301,7 +346,10 @@
         "$description": "Pins A/B/parada sobre o mapa.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["width", "height"]
+            "usage": [
+              "width",
+              "height"
+            ]
           }
         }
       },
@@ -311,7 +359,9 @@
           "$description": "Largura do menu em telas largas.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["width"]
+              "usage": [
+                "width"
+              ]
             }
           }
         },
@@ -320,7 +370,9 @@
           "$description": "Largura da folha de camadas em telas largas.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["width"]
+              "usage": [
+                "width"
+              ]
             }
           }
         }
@@ -330,7 +382,9 @@
         "$description": "Espessura da alça de arrastar da folha no celular.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["height"]
+            "usage": [
+              "height"
+            ]
           }
         }
       }
@@ -344,7 +398,9 @@
           "$description": "Espaço interno 2xs.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["padding"]
+              "usage": [
+                "padding"
+              ]
             }
           }
         },
@@ -353,7 +409,9 @@
           "$description": "Espaço interno xs.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["padding"]
+              "usage": [
+                "padding"
+              ]
             }
           }
         },
@@ -362,7 +420,9 @@
           "$description": "Espaço interno sm.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["padding"]
+              "usage": [
+                "padding"
+              ]
             }
           }
         },
@@ -371,7 +431,9 @@
           "$description": "Espaço interno md.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["padding"]
+              "usage": [
+                "padding"
+              ]
             }
           }
         },
@@ -380,7 +442,9 @@
           "$description": "Espaço interno lg.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["padding"]
+              "usage": [
+                "padding"
+              ]
             }
           }
         },
@@ -389,7 +453,9 @@
           "$description": "Espaço interno xl.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["padding"]
+              "usage": [
+                "padding"
+              ]
             }
           }
         }
@@ -400,7 +466,10 @@
           "$description": "Espaço entre itens 2xs.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["gap", "margin"]
+              "usage": [
+                "gap",
+                "margin"
+              ]
             }
           }
         },
@@ -409,7 +478,10 @@
           "$description": "Espaço entre itens xs.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["gap", "margin"]
+              "usage": [
+                "gap",
+                "margin"
+              ]
             }
           }
         },
@@ -418,7 +490,10 @@
           "$description": "Espaço entre itens sm.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["gap", "margin"]
+              "usage": [
+                "gap",
+                "margin"
+              ]
             }
           }
         },
@@ -427,7 +502,10 @@
           "$description": "Espaço entre itens md.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["gap", "margin"]
+              "usage": [
+                "gap",
+                "margin"
+              ]
             }
           }
         },
@@ -436,7 +514,10 @@
           "$description": "Espaço entre itens lg.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["gap", "margin"]
+              "usage": [
+                "gap",
+                "margin"
+              ]
             }
           }
         },
@@ -445,7 +526,10 @@
           "$description": "Espaço entre itens xl.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["gap", "margin"]
+              "usage": [
+                "gap",
+                "margin"
+              ]
             }
           }
         }
@@ -455,7 +539,10 @@
         "$description": "Distância dos controles e painéis até a borda da tela (somada à área segura do aparelho).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["margin", "position"]
+            "usage": [
+              "margin",
+              "position"
+            ]
           }
         }
       }
@@ -467,7 +554,9 @@
         "$description": "Peças pequenas: badges de linha, amostras da legenda, ícones de estação.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["radius"]
+            "usage": [
+              "radius"
+            ]
           }
         }
       },
@@ -476,7 +565,9 @@
         "$description": "Linhas de lista selecionáveis e a opção de rota escolhida.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["radius"]
+            "usage": [
+              "radius"
+            ]
           }
         }
       },
@@ -485,7 +576,9 @@
         "$description": "Botões, campos e os botões sobre o mapa.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["radius"]
+            "usage": [
+              "radius"
+            ]
           }
         }
       },
@@ -494,7 +587,9 @@
         "$description": "Painéis e folhas.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["radius"]
+            "usage": [
+              "radius"
+            ]
           }
         }
       },
@@ -503,7 +598,9 @@
         "$description": "Pílulas e círculos (pins, bolinhas de status, toast).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["radius"]
+            "usage": [
+              "radius"
+            ]
           }
         }
       }
@@ -522,7 +619,9 @@
         "$description": "O nome do app no topo do menu.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       },
@@ -537,7 +636,9 @@
         "$description": "Títulos de popup e de trecho da rota.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       },
@@ -552,7 +653,9 @@
         "$description": "Texto corrido e campos (16 px: o iPhone não dá zoom ao tocar no campo).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       },
@@ -567,7 +670,9 @@
         "$description": "Texto de apoio: detalhes, notas, conteúdo dos popups.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       },
@@ -582,7 +687,9 @@
         "$description": "Botões, opções e rótulos curtos.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       },
@@ -597,7 +704,9 @@
         "$description": "Créditos, fonte dos dados, legendas miúdas.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       },
@@ -612,7 +721,9 @@
         "$description": "Títulos de seção, em caixa alta.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       }
@@ -625,7 +736,9 @@
         "$description": "Menu e folha de camadas.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["z-index"]
+            "usage": [
+              "z-index"
+            ]
           }
         }
       },
@@ -634,7 +747,20 @@
         "$description": "Botões sobre o mapa, acima das folhas.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["z-index"]
+            "usage": [
+              "z-index"
+            ]
+          }
+        }
+      },
+      "dialog": {
+        "$value": 1100,
+        "$description": "Janela que pede uma escolha (boas-vindas), com o véu: acima das folhas e dos botões, abaixo do toast.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "z-index"
+            ]
           }
         }
       },
@@ -643,7 +769,9 @@
         "$description": "O toast.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["z-index"]
+            "usage": [
+              "z-index"
+            ]
           }
         }
       },
@@ -652,7 +780,9 @@
         "$description": "O aviso de nova versão, acima de tudo.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["z-index"]
+            "usage": [
+              "z-index"
+            ]
           }
         }
       }
@@ -665,7 +795,9 @@
           "$description": "Quase todas as transições.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["transition"]
+              "usage": [
+                "transition"
+              ]
             }
           }
         },
@@ -674,7 +806,9 @@
           "$description": "Movimento que acompanha um gesto contínuo.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["transition"]
+              "usage": [
+                "transition"
+              ]
             }
           }
         },
@@ -683,7 +817,9 @@
           "$description": "Animações em loop, que vão e voltam.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["animation"]
+              "usage": [
+                "animation"
+              ]
             }
           }
         }

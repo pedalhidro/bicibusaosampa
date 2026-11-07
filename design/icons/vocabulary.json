@@ -121,6 +121,10 @@
       "name": "info-circle",
       "filled": "info-circle",
       "description": "Explicação de um grupo de opções: abre e fecha o texto ao lado."
+    },
+    "explore": {
+      "name": "map-2",
+      "description": "Explorar o mapa ao redor (na tela de boas-vindas e nos ajustes)."
     }
   }
 }

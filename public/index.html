@@ -19,6 +19,7 @@
   <!-- Fetch everything app.js needs up front instead of discovering it import by import. -->
   <link rel="modulepreload" href="js/custom-model.js">
   <link rel="modulepreload" href="js/geocode.js">
+  <link rel="modulepreload" href="js/intent.js">
   <link rel="modulepreload" href="js/heading.js">
   <link rel="modulepreload" href="js/icons.js">
   <link rel="modulepreload" href="js/locate.js">
@@ -44,7 +45,7 @@
 
   <div id="map-buttons">
     <button type="button" id="panel-toggle" class="map-btn" aria-controls="panel" aria-pressed="true" aria-label="Menu" title="Menu"><svg class="icon icon-lg" data-icon="menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg></button>
-    <button type="button" id="layers-toggle" class="map-btn" aria-controls="layers-panel" aria-pressed="false" aria-label="Camadas e legenda" title="Camadas e legenda">
+    <button type="button" id="layers-toggle" class="map-btn" aria-controls="layers-panel" aria-pressed="false" aria-label="Camadas, legenda e ajustes" title="Camadas, legenda e ajustes">
       <span class="icon-swap"><svg class="icon icon-lg" data-icon="layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l-8 4l8 4l8 -4l-8 -4"/><path d="M4 12l8 4l8 -4"/><path d="M4 16l8 4l8 -4"/></svg><svg class="icon icon-lg" data-icon="layers" data-style="filled" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.894 15.553a1 1 0 0 1 -.447 1.341l-8 4a1 1 0 0 1 -.894 0l-8 -4a1 1 0 0 1 .894 -1.788l7.553 3.774l7.554 -3.775a1 1 0 0 1 1.341 .447m0 -4a1 1 0 0 1 -.447 1.341l-8 4a1 1 0 0 1 -.894 0l-8 -4a1 1 0 0 1 .894 -1.788l7.552 3.775l7.554 -3.775a1 1 0 0 1 1.341 .447m-8.887 -8.552q .056 0 .111 .007l.111 .02l.086 .024l.012 .006l.012 .002l.029 .014l.05 .019l.016 .009l.012 .005l8 4a1 1 0 0 1 0 1.788l-8 4a1 1 0 0 1 -.894 0l-8 -4a1 1 0 0 1 0 -1.788l8 -4l.011 -.005l.018 -.01l.078 -.032l.011 -.002l.013 -.006l.086 -.024l.11 -.02l.056 -.005z"/></svg></span>
     </button>
     <button type="button" id="compass-btn" class="map-btn" aria-label="Apontar o norte para cima" title="Norte para cima" hidden>
@@ -62,6 +63,12 @@
       <p id="clock" class="clock"></p>
     </header>
     <div class="sheet-body">
+      <section id="access-note" class="access-note" hidden>
+        <h2>Acessibilidade</h2>
+        <p>No mapa: os ônibus de piso baixo ao vivo (embarque sem degrau), as estações e os terminais.</p>
+        <p class="note">Rotas acessíveis, sem degraus e com ônibus de piso baixo, ainda estão em preparação. Para planejar uma viagem de bicicleta, mude o uso em Camadas › Ajustes.</p>
+      </section>
+
       <section id="plan-section">
         <details id="plan-details" open>
           <summary><h2>Planejar viagem</h2></summary>
@@ -188,11 +195,25 @@
       <div class="tabs" role="tablist" aria-label="Camadas e legenda">
         <button type="button" role="tab" id="tab-layers" aria-controls="tabpanel-layers" aria-selected="true">Camadas</button>
         <button type="button" role="tab" id="tab-legend" aria-controls="tabpanel-legend" aria-selected="false" tabindex="-1">Legenda</button>
+        <button type="button" role="tab" id="tab-settings" aria-controls="tabpanel-settings" aria-selected="false" tabindex="-1">Ajustes</button>
       </div>
     </header>
     <div class="sheet-body">
       <div id="tabpanel-layers" role="tabpanel" aria-labelledby="tab-layers">
       <ul id="layer-rows" class="layer-rows"></ul>
+      </div>
+      <div id="tabpanel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+        <fieldset class="intent-choices">
+          <legend>O que você quer fazer</legend>
+          <label class="plan-check"><input type="radio" name="intent" value="explore"> Explorar o entorno</label>
+          <label class="plan-check"><input type="radio" name="intent" value="bike"> Chegar num lugar de bicicleta</label>
+          <label class="plan-check"><input type="radio" name="intent" value="access"> Chegar num lugar com acessibilidade</label>
+        </fieldset>
+        <p class="note">Escolher um uso ajusta as camadas do mapa e o menu para ele. O que você muda depois, nas camadas e no planejador, fica guardado neste aparelho.</p>
+        <div class="settings-actions">
+          <button type="button" id="welcome-again">Ver a tela de boas-vindas</button>
+          <button type="button" id="reset-prefs">Voltar ao padrão</button>
+        </div>
       </div>
       <div id="tabpanel-legend" role="tabpanel" aria-labelledby="tab-legend" hidden>
       <h3 class="legend-title">Metrô e trens</h3>
@@ -231,6 +252,19 @@
       </div>
     </div>
   </aside>
+
+  <div id="welcome" class="welcome" hidden>
+    <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-lead">
+      <h1 id="welcome-title">Bici Busão Sampa</h1>
+      <p id="welcome-lead">O que você quer fazer?</p>
+      <div class="welcome-choices">
+        <button type="button" data-intent="explore"><svg class="icon icon-lg" data-icon="explore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5"/><path d="M9 4v13"/><path d="M15 7v5.5"/><path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879"/><path d="M19 18v.01"/></svg><span><b>Explorar o entorno</b><small>O mapa com ônibus, trilhos, estações e bicicletários</small></span></button>
+        <button type="button" data-intent="bike"><svg class="icon icon-lg" data-icon="bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M16 18a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M12 19v-4l-3 -3l5 -4l2 3h3"/><path d="M13.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg><span><b>Chegar num lugar de bicicleta</b><small>De onde, para onde e como: bici, ônibus e trilhos</small></span></button>
+        <button type="button" data-intent="access"><svg class="icon icon-lg" data-icon="accessible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M10 16.5l2 -3l2 3m-2 -3v-2l3 -1m-6 0l3 1"/><path d="M11.5 7.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0" fill="currentColor"/></svg><span><b>Chegar num lugar com acessibilidade</b><small>Ônibus de piso baixo ao vivo, estações e terminais</small></span></button>
+      </div>
+      <p class="note">Dá para mudar depois em Camadas › Ajustes.</p>
+    </div>
+  </div>
 
   <button type="button" id="update-banner" hidden>Nova versão · toque para atualizar</button>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

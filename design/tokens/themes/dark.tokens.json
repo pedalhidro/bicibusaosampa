@@ -8,6 +8,9 @@
       },
       "panel": {
         "$value": "{ref.color.alpha.stone-900-97}"
+      },
+      "scrim": {
+        "$value": "{ref.color.alpha.black-50}"
       }
     },
     "content": {

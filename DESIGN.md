@@ -384,6 +384,7 @@ Não edite à mão: o teste confere.
 | `ui.type.overline` | `600 12px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Títulos de seção, em caixa alta. |
 | `ui.layer.sheet` | `1000` | Menu e folha de camadas. |
 | `ui.layer.map-controls` | `1001` | Botões sobre o mapa, acima das folhas. |
+| `ui.layer.dialog` | `1100` | Janela que pede uma escolha (boas-vindas), com o véu: acima das folhas e dos botões, abaixo do toast. |
 | `ui.layer.toast` | `1200` | O toast. |
 | `ui.layer.banner` | `1201` | O aviso de nova versão, acima de tudo. |
 | `ui.motion.easing.standard` | `cubic-bezier(0.25, 0.1, 0.25, 1)` | Quase todas as transições. |
@@ -391,6 +392,7 @@ Não edite à mão: o teste confere.
 | `ui.motion.easing.pulse` | `cubic-bezier(0.42, 0, 0.58, 1)` | Animações em loop, que vão e voltam. |
 | `ui.surface.page` | `#ffffff` · dark `#0c0a09` | Fundo da página e dos campos. |
 | `ui.surface.panel` | `rgb(255 255 255 / 0.97)` · dark `rgb(28 25 23 / 0.97)` | Painéis e botões sobre o mapa; quase opaco, para o mapa aparecer de leve por trás. |
+| `ui.surface.scrim` | `rgb(0 0 0 / 0.45)` · dark `rgb(0 0 0 / 0.5)` | Véu sobre o mapa atrás de uma janela que pede uma escolha (a tela de boas-vindas). |
 | `ui.content.primary` | `#1c1917` · dark `#f5f5f4` | Texto principal. |
 | `ui.content.secondary` | `#57534e` · dark `#a8a29e` | Texto de apoio: títulos de seção, horários, detalhes. |
 | `ui.border.default` | `#e7e5e4` · dark `#292524` | Bordas de painéis, campos e separadores de lista. |

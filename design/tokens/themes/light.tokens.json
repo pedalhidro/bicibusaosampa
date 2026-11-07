@@ -8,8 +8,13 @@
         "$description": "Fundo da página e dos campos.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["background"],
-            "avoid": ["texto", "ícones do mapa"]
+            "usage": [
+              "background"
+            ],
+            "avoid": [
+              "texto",
+              "ícones do mapa"
+            ]
           }
         }
       },
@@ -18,8 +23,26 @@
         "$description": "Painéis e botões sobre o mapa; quase opaco, para o mapa aparecer de leve por trás.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["background"],
-            "avoid": ["texto"]
+            "usage": [
+              "background"
+            ],
+            "avoid": [
+              "texto"
+            ]
+          }
+        }
+      },
+      "scrim": {
+        "$value": "{ref.color.alpha.black-45}",
+        "$description": "Véu sobre o mapa atrás de uma janela que pede uma escolha (a tela de boas-vindas).",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "background"
+            ],
+            "avoid": [
+              "Não usar para painéis: eles ficam sobre o mapa sem véu."
+            ]
           }
         }
       }
@@ -30,8 +53,13 @@
         "$description": "Texto principal.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["text", "icon"],
-            "avoid": ["fundos"],
+            "usage": [
+              "text",
+              "icon"
+            ],
+            "avoid": [
+              "fundos"
+            ],
             "contrast": [
               {
                 "against": "ui.surface.page",
@@ -50,8 +78,14 @@
         "$description": "Texto de apoio: títulos de seção, horários, detalhes.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["text", "icon"],
-            "avoid": ["fundos", "o texto que precisa ser lido primeiro"],
+            "usage": [
+              "text",
+              "icon"
+            ],
+            "avoid": [
+              "fundos",
+              "o texto que precisa ser lido primeiro"
+            ],
             "contrast": [
               {
                 "against": "ui.surface.page",
@@ -72,8 +106,12 @@
         "$description": "Bordas de painéis, campos e separadores de lista.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["border"],
-            "avoid": ["texto"]
+            "usage": [
+              "border"
+            ],
+            "avoid": [
+              "texto"
+            ]
           }
         }
       }
@@ -84,8 +122,16 @@
         "$description": "Ação e seleção: botão ativo, foco, links, opção escolhida.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["background", "border", "text", "outline"],
-            "avoid": ["status de bici (use map.status.*)", "ícones do mapa"],
+            "usage": [
+              "background",
+              "border",
+              "text",
+              "outline"
+            ],
+            "avoid": [
+              "status de bici (use map.status.*)",
+              "ícones do mapa"
+            ],
             "contrast": [
               {
                 "against": "ui.surface.page",
@@ -104,7 +150,10 @@
         "$description": "Texto sobre o destaque.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["text", "icon"],
+            "usage": [
+              "text",
+              "icon"
+            ],
             "contrast": [
               {
                 "against": "ui.accent.default",

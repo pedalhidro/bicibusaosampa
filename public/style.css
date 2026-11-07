@@ -654,15 +654,18 @@ button .icon, summary .icon { pointer-events: none; }
 
 /* Layers sheet: Camadas | Legenda tabs. */
 .tabs { display: flex; gap: var(--ui-space-gap-xs); }
+.tabs { min-width: 0; }
 .tabs [role="tab"] {
   min-height: var(--ui-size-control-sm);
-  padding: 0 var(--ui-space-inset-md);
+  padding: 0 var(--ui-space-inset-sm);
   border: 0;
   border-radius: var(--ui-radius-full);
   background: transparent;
   color: var(--ui-content-secondary);
-  font: var(--ui-type-heading);
-  letter-spacing: var(--ui-type-heading-tracking);
+  font: var(--ui-type-label);
+  letter-spacing: var(--ui-type-label-tracking);
+  font-weight: var(--ui-font-weight-bold);
+  white-space: nowrap;
   cursor: pointer;
 }
 .tabs [role="tab"][aria-selected="true"] { background: color-mix(in srgb, var(--ui-accent-default) 14%, transparent); color: var(--ui-content-primary); }
@@ -714,4 +717,72 @@ button .icon, summary .icon { pointer-events: none; }
 /* Phones: the menu opens at a low "peek" height and grows on first use. */
 @media (max-width: 640px) {
   #panel.peek { max-height: min(45dvh, 300px); }
+}
+
+/* ------------------------------------------------------------ welcome and settings */
+
+/* "O que você quer fazer?": first visit, or again from Camadas › Ajustes (intent.js). */
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ui-layer-dialog);
+  display: grid;
+  place-items: center;
+  padding: calc(var(--ui-space-edge) + var(--sat)) calc(var(--ui-space-edge) + var(--sar)) calc(var(--ui-space-edge) + var(--sab)) calc(var(--ui-space-edge) + var(--sal));
+  background: var(--ui-surface-scrim);
+}
+.welcome[hidden] { display: none; }
+.welcome-card {
+  width: min(100%, var(--ui-size-panel-md));
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--ui-space-inset-xl) var(--ui-space-inset-lg) var(--ui-space-inset-lg);
+  border-radius: var(--ui-radius-container);
+  background: var(--ui-surface-page);
+  color: var(--ui-content-primary);
+  box-shadow: var(--ui-shadow-overlay);
+}
+.welcome-card h1 { margin: 0; font: var(--ui-type-title); letter-spacing: var(--ui-type-title-tracking); }
+.welcome-card > p { margin: var(--ui-space-gap-xs) 0 var(--ui-space-gap-lg); font: var(--ui-type-body); color: var(--ui-content-secondary); }
+.welcome-card > p.note { margin: var(--ui-space-gap-md) 0 0; font: var(--ui-type-caption); }
+.welcome-choices { display: flex; flex-direction: column; gap: var(--ui-space-gap-sm); }
+.welcome-choices button {
+  display: flex;
+  gap: var(--ui-space-gap-md);
+  align-items: center;
+  min-height: var(--ui-size-touch);
+  padding: var(--ui-space-inset-md);
+  border: 1px solid var(--ui-border-default);
+  border-radius: var(--ui-radius-control);
+  background: transparent;
+  color: var(--ui-content-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.welcome-choices button:hover,
+.welcome-choices button:focus-visible { border-color: var(--ui-accent-default); background: color-mix(in srgb, var(--ui-accent-default) 10%, transparent); outline: none; }
+.welcome-choices .icon-lg { flex: none; color: var(--ui-accent-default); }
+.welcome-choices span { display: flex; flex-direction: column; gap: var(--ui-space-gap-2xs); }
+.welcome-choices b { font: var(--ui-type-heading); letter-spacing: var(--ui-type-heading-tracking); }
+.welcome-choices small { font: var(--ui-type-body-sm); color: var(--ui-content-secondary); }
+
+/* Accessibility intent: a note where the planner would be. */
+.access-note[hidden] { display: none; }
+.access-note p { margin: 0 0 var(--ui-space-gap-sm); font: var(--ui-type-body-sm); }
+
+/* Ajustes tab. */
+.intent-choices { margin: var(--ui-space-gap-sm) 0 0; padding: 0; border: 0; }
+.intent-choices legend { padding: 0; font: var(--ui-type-overline); letter-spacing: var(--ui-type-overline-tracking); color: var(--ui-content-secondary); text-transform: uppercase; }
+.intent-choices input { accent-color: var(--ui-accent-default); }
+#tabpanel-settings .note { margin: var(--ui-space-gap-sm) 0; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-gap-sm); }
+.settings-actions button {
+  min-height: var(--ui-size-touch);
+  padding: var(--ui-space-inset-xs) var(--ui-space-inset-md);
+  border: 1px solid var(--ui-border-default);
+  border-radius: var(--ui-radius-item);
+  background: transparent;
+  color: var(--ui-content-primary);
+  font: var(--ui-type-label);
+  cursor: pointer;
 }

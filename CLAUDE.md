@@ -47,6 +47,15 @@ append `window.__map = map;`.
   - `js/locate.js`: locate button and blue dot. Opens on Terminal Bandeira at zoom 16;
     follows the user from the start only if location permission was already granted.
   - `js/geocode.js`: place search and reverse lookup with Photon (bbox Greater SP).
+  - `js/intent.js`: what the person came to do ("caminho do usuário"), asked on a
+    welcome dialog at the first visit (not over a shared trip link) and again from
+    the ⧉ sheet's **Ajustes** tab: Explorar o entorno (default layers, layers sheet
+    open), Chegar de bicicleta (planner open, destination focused), Chegar com
+    acessibilidade (map-only for now: stations, terminals and low-floor buses, bike
+    layers off, a note instead of the planner). Choosing one sets the layers and the
+    menu; later changes persist as usual and become the defaults. Saved as `intent`.
+    Ajustes also has "Voltar ao padrão", which clears saved preferences (not Casa,
+    Trabalho or recent searches).
   - `sw-template.js` + `functions/sw.js.js`: the service worker, served at `/sw.js`
     with `__VERSION__` = deployed commit, so each deploy installs a new worker and the
     page shows "Nova versão · toque para atualizar". Shell cached per version (fetched

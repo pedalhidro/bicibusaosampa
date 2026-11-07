@@ -93,6 +93,7 @@ export const tokens = {
     "layer": {
       "sheet": "1000",
       "mapControls": "1001",
+      "dialog": "1100",
       "toast": "1200",
       "banner": "1201"
     },
@@ -129,6 +130,10 @@ export const tokens = {
       "panel": {
         "light": "rgb(255 255 255 / 0.97)",
         "dark": "rgb(28 25 23 / 0.97)"
+      },
+      "scrim": {
+        "light": "rgb(0 0 0 / 0.45)",
+        "dark": "rgb(0 0 0 / 0.5)"
       }
     },
     "border": {

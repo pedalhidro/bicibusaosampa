@@ -132,6 +132,7 @@
   --ui-type-overline-tracking: var(--ref-font-tracking-wide);
   --ui-layer-sheet: 1000;
   --ui-layer-map-controls: 1001;
+  --ui-layer-dialog: 1100;
   --ui-layer-toast: 1200;
   --ui-layer-banner: 1201;
   --ui-motion-easing-standard: var(--ref-easing-standard);
@@ -182,6 +183,7 @@
   --brand-splash: var(--ref-color-brown-900);
   --ui-surface-page: var(--ref-color-white);
   --ui-surface-panel: var(--ref-color-alpha-white-97);
+  --ui-surface-scrim: var(--ref-color-alpha-black-45);
   --ui-content-primary: var(--ref-color-stone-900);
   --ui-content-secondary: var(--ref-color-stone-600);
   --ui-border-default: var(--ref-color-stone-200);
@@ -197,6 +199,7 @@
   :root {
     --ui-surface-page: var(--ref-color-stone-950);
     --ui-surface-panel: var(--ref-color-alpha-stone-900-97);
+    --ui-surface-scrim: var(--ref-color-alpha-black-50);
     --ui-content-primary: var(--ref-color-stone-100);
     --ui-content-secondary: var(--ref-color-stone-400);
     --ui-border-default: var(--ref-color-stone-800);
