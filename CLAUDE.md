@@ -48,8 +48,10 @@ append `window.__map = map;`.
     follows the user from the start only if location permission was already granted.
   - `js/geocode.js`: place search and reverse lookup with Photon (bbox Greater SP).
   - `js/intent.js`: what the person came to do ("caminho do usuário"), asked on a
-    welcome dialog at the first visit (not over a shared trip link) and again from
-    the ⧉ sheet's **Ajustes** tab: Explorar o entorno (default layers, layers sheet
+    welcome dialog (not over a shared trip link) on the first visit and on every visit
+    while "Mostrar esta tela nas próximas vezes" is ticked (default on; also in Ajustes;
+    `welcomeEvery`), and from the ⧉ sheet's **Ajustes** tab. Picking the same use
+    again keeps the layers changed since: Explorar o entorno (default layers, layers sheet
     open, planner folded unless a shared trip is opening), Chegar de bicicleta (planner
     open, destination focused), Chegar com
     acessibilidade (map-only for now: stations, terminals and low-floor buses, bike

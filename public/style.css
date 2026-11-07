@@ -744,7 +744,8 @@ button .icon, summary .icon { pointer-events: none; }
 }
 .welcome-card h1 { margin: 0; font: var(--ui-type-title); letter-spacing: var(--ui-type-title-tracking); }
 .welcome-card > p { margin: var(--ui-space-gap-xs) 0 var(--ui-space-gap-lg); font: var(--ui-type-body); color: var(--ui-content-secondary); }
-.welcome-card > p.note { margin: var(--ui-space-gap-md) 0 0; font: var(--ui-type-caption); }
+.welcome-card > p.note { margin: 0; font: var(--ui-type-caption); }
+.welcome-card .welcome-again { margin-top: var(--ui-space-gap-sm); color: var(--ui-content-primary); }
 .welcome-choices { display: flex; flex-direction: column; gap: var(--ui-space-gap-sm); }
 .welcome-choices button {
   display: flex;

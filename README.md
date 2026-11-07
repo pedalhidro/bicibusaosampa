@@ -66,7 +66,8 @@ bicicletários e os ônibus de piso baixo. Em **Legenda**: o que cada
 cor e forma quer dizer. No canto do mapa ficam só os créditos obrigatórios (OpenStreetMap e, com os mapas da
 CARTO, a CARTO), ao lado de um resumo do que está ao vivo (toque nele para ver as linhas).
 
-Na primeira visita, o app pergunta **o que você quer fazer**: explorar o entorno,
+Ao abrir, o app pergunta **o que você quer fazer** (dá para desmarcar "Mostrar esta
+tela nas próximas vezes"): explorar o entorno,
 chegar num lugar de bicicleta ou chegar num lugar com acessibilidade (por enquanto só
 o mapa: ônibus de piso baixo, estações e terminais). A escolha ajusta as camadas e o
 menu, e dá para mudar depois na aba **Ajustes** do botão de camadas, que também volta

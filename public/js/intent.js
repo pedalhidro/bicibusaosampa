@@ -1,6 +1,8 @@
 // What the person came to do ("caminho do usuário"): explore the map, get somewhere by
-// bike, or get somewhere with accessibility needs. Asked once, on the welcome screen
-// (first visit, or again from Camadas › Ajustes), and kept in localStorage as 'intent'.
+// bike, or get somewhere with accessibility needs. Asked on the welcome screen, kept in
+// localStorage as 'intent'. The screen opens on every visit while "Mostrar esta tela
+// nas próximas vezes" is ticked (the default; 'welcomeEvery' = '0' when not), and
+// always from Camadas › Ajustes.
 //
 // Choosing an intent sets the map layers and the menu for it; whatever the person
 // changes afterwards (layers, planner options) is remembered as usual, so those become
@@ -10,6 +12,7 @@
 import { toast } from './ui.js';
 
 const KEY = 'intent';
+const EVERY = 'welcomeEvery';
 export const INTENTS = {
   explore: { label: 'Explorar o entorno', layers: ['rail', 'stations', 'busRoutes', 'buses', 'parking'] },
   bike: { label: 'Chegar num lugar de bicicleta', layers: ['rail', 'stations', 'busRoutes', 'buses', 'parking'] },
@@ -17,12 +20,13 @@ export const INTENTS = {
 };
 
 // Saved preferences "Voltar ao padrão" clears (saved places and recent searches stay).
-const PREF_KEYS = [KEY, 'hiddenLayers', 'shownLayers', 'baseMaps', 'panelCollapsed', 'planProfile', 'planOptimize',
+const PREF_KEYS = [KEY, EVERY, 'hiddenLayers', 'shownLayers', 'baseMaps', 'panelCollapsed', 'planProfile', 'planOptimize',
   'planPower', 'planTimeWeightK', 'planStyle', 'planPrefs', 'planCustomModel', 'planNetworks', 'planAvoidArterials'];
 const PREF_PREFIXES = ['sheetHeight:', 'tab:'];
 
 const recall = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const remember = (v) => { try { localStorage.setItem(KEY, v); } catch {} };
+const everyVisit = () => { try { return localStorage.getItem(EVERY) !== '0'; } catch { return true; } };
 
 /**
  * setLayers(keys): show exactly these overlay layers (app.js TOGGLES keys).
@@ -37,6 +41,15 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
   const planDetails = document.getElementById('plan-details');
   const accessNote = document.getElementById('access-note');
   const radios = [...document.querySelectorAll('input[name="intent"]')];
+  // The same switch on the welcome screen and in Ajustes.
+  const everyBoxes = [...document.querySelectorAll('input[data-welcome-every]')];
+  for (const b of everyBoxes) {
+    b.checked = everyVisit();
+    b.addEventListener('change', () => {
+      try { localStorage.setItem(EVERY, b.checked ? '1' : '0'); } catch {}
+      for (const other of everyBoxes) other.checked = b.checked;
+    });
+  }
   let returnFocus = null;
 
   /**
@@ -54,8 +67,10 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
 
   function choose(intent, { fromWelcome = false } = {}) {
     if (!INTENTS[intent]) return;
+    // Picking the same use again on a later visit keeps the layers the person set since.
+    const same = recall() === intent;
     remember(intent);
-    setLayers(INTENTS[intent].layers);
+    if (!(same && fromWelcome)) setLayers(INTENTS[intent].layers);
     showMenu(intent);
     if (intent === 'bike') openPanel();
     else if (intent === 'explore' && fromWelcome) openLayers();
@@ -83,17 +98,18 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
   welcome.addEventListener('keydown', (e) => {
     const buttons = [...welcome.querySelectorAll('button[data-intent]')];
     if (e.key === 'Escape') {
-      // Closing without a choice is exploring the map, and isn't asked again.
+      // Closing without a choice keeps the current use (on a first visit: exploring).
       e.stopPropagation();
       closeWelcome();
       if (!recall()) choose('explore', { fromWelcome: true });
     } else if (e.key === 'Tab') {
-      // Keep focus inside the dialog.
-      const i = buttons.indexOf(document.activeElement);
-      const next = e.shiftKey ? (i <= 0 ? buttons.length - 1 : i - 1) : (i + 1) % buttons.length;
+      // Keep focus inside the dialog: the three choices and the checkbox.
+      const stops = [...buttons, welcome.querySelector('input[data-welcome-every]')];
+      const i = stops.indexOf(document.activeElement);
+      const next = e.shiftKey ? (i <= 0 ? stops.length - 1 : i - 1) : (i + 1) % stops.length;
       e.preventDefault();
-      buttons[next].focus();
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      stops[next].focus();
+    } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && buttons.includes(document.activeElement)) {
       const i = buttons.indexOf(document.activeElement);
       e.preventDefault();
       buttons[(i + (e.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length].focus();
@@ -116,6 +132,6 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
 
   const saved = recall();
   if (saved && INTENTS[saved]) showMenu(saved);
-  else if (!skipWelcome) openWelcome();
+  if (!skipWelcome && (!INTENTS[saved] || everyVisit())) openWelcome();
   return { intent: () => recall(), openWelcome };
 }
