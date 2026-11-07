@@ -50,7 +50,8 @@ append `window.__map = map;`.
   - `js/intent.js`: what the person came to do ("caminho do usuário"), asked on a
     welcome dialog at the first visit (not over a shared trip link) and again from
     the ⧉ sheet's **Ajustes** tab: Explorar o entorno (default layers, layers sheet
-    open), Chegar de bicicleta (planner open, destination focused), Chegar com
+    open, planner folded unless a shared trip is opening), Chegar de bicicleta (planner
+    open, destination focused), Chegar com
     acessibilidade (map-only for now: stations, terminals and low-floor buses, bike
     layers off, a note instead of the planner). Choosing one sets the layers and the
     menu; later changes persist as usual and become the defaults. Saved as `intent`.

@@ -28,7 +28,8 @@ const remember = (v) => { try { localStorage.setItem(KEY, v); } catch {} };
  * setLayers(keys): show exactly these overlay layers (app.js TOGGLES keys).
  * openPanel(): the menu, with the planner open and the destination focused.
  * openLayers(): the layers sheet.
- * skipWelcome: true when the page opened on a shared trip (it answers the question).
+ * skipWelcome: true when the page opened on a shared trip (it answers the question,
+ * and keeps the planner open).
  */
 export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = false }) {
   const welcome = document.getElementById('welcome');
@@ -38,13 +39,16 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
   const radios = [...document.querySelectorAll('input[name="intent"]')];
   let returnFocus = null;
 
-  /** The menu for an intent: the planner, or (accessibility) the note in its place. */
+  /**
+   * The menu for an intent: the planner, or (accessibility) the note in its place.
+   * Exploring starts with the planner folded, so map taps open popups instead of
+   * adding trip points (a closed planner ignores them); a shared trip keeps it open.
+   */
   function showMenu(intent) {
     const access = intent === 'access';
     planSection.hidden = access;
     accessNote.hidden = !access;
-    // A closed planner doesn't turn map taps into trip points.
-    planDetails.open = !access;
+    planDetails.open = intent === 'bike' || (intent === 'explore' && skipWelcome);
     for (const r of radios) r.checked = r.value === intent;
   }
 
