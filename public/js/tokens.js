@@ -88,6 +88,7 @@ export const tokens = {
       "bodySm": "400 14px/1.4 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "label": "600 14px/1.4 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "caption": "400 12px/1.4 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "credit": "400 10px/1 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
       "overline": "600 12px/1.4 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
     },
     "layer": {
@@ -134,6 +135,10 @@ export const tokens = {
       "scrim": {
         "light": "rgb(0 0 0 / 0.45)",
         "dark": "rgb(0 0 0 / 0.5)"
+      },
+      "credit": {
+        "light": "rgb(255 255 255 / 0.7)",
+        "dark": "rgb(28 25 23 / 0.7)"
       }
     },
     "border": {

@@ -45,6 +45,20 @@
             ]
           }
         }
+      },
+      "credit": {
+        "$value": "{ref.color.alpha.white-70}",
+        "$description": "Fundo leve dos créditos no canto do mapa: legíveis, mas deixando o mapa aparecer.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "background"
+            ],
+            "avoid": [
+              "Não usar para painéis ou botões: são sólidos (ui.surface.panel)."
+            ]
+          }
+        }
       }
     },
     "content": {

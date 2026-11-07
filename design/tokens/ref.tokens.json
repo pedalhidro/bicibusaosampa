@@ -389,6 +389,30 @@
             "alpha": 0.5,
             "hex": "#000000"
           }
+        },
+        "white-70": {
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              1,
+              1,
+              1
+            ],
+            "alpha": 0.7,
+            "hex": "#ffffff"
+          }
+        },
+        "stone-900-70": {
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.1098,
+              0.098,
+              0.0902
+            ],
+            "alpha": 0.7,
+            "hex": "#1c1917"
+          }
         }
       }
     },

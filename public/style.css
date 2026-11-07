@@ -315,16 +315,19 @@ h2 { margin: var(--ui-space-gap-lg) 0 var(--ui-space-gap-sm); font: var(--ui-typ
 }
 
 /* Credits and the live chip, in the map's bottom corners. */
+/* The required credits only (the rest is in the Info tab): one small line, light
+   backing, tight to the corner. Legible and on the map, as CARTO and OSM ask. */
 .leaflet-control-attribution.leaflet-control {
-  max-width: min(46vw, 420px);
-  margin: 0 var(--ui-space-gap-xs) var(--ui-space-gap-xs) 0;
+  margin: 0;
   padding: var(--ui-space-inset-2xs) var(--ui-space-inset-xs);
-  border-radius: var(--ui-radius-small);
-  background: var(--ui-surface-panel);
+  border-radius: var(--ui-radius-small) 0 0 0;
+  background: var(--ui-surface-credit);
   color: var(--ui-content-secondary);
-  font: var(--ui-type-caption);
+  font: var(--ui-type-credit);
+  white-space: nowrap;
 }
-.leaflet-control-attribution a { color: var(--ui-accent-default); }
+.leaflet-control-attribution a { color: inherit; text-decoration: underline; text-decoration-color: var(--ui-border-default); }
+.leaflet-control-attribution [aria-hidden="true"] { display: none; } /* Leaflet's "|" */
 .live-chip.leaflet-control {
   display: flex;
   flex-direction: column;

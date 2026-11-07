@@ -381,6 +381,7 @@ Não edite à mão: o teste confere.
 | `ui.type.body-sm` | `400 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Texto de apoio: detalhes, notas, conteúdo dos popups. |
 | `ui.type.label` | `600 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Botões, opções e rótulos curtos. |
 | `ui.type.caption` | `400 12px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Créditos, fonte dos dados, legendas miúdas. |
+| `ui.type.credit` | `400 10px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Créditos obrigatórios no canto do mapa (OpenStreetMap, CARTO): o menor texto ainda legível, numa linha só. |
 | `ui.type.overline` | `600 12px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Títulos de seção, em caixa alta. |
 | `ui.layer.sheet` | `1000` | Menu e folha de camadas. |
 | `ui.layer.map-controls` | `1001` | Botões sobre o mapa, acima das folhas. |
@@ -393,6 +394,7 @@ Não edite à mão: o teste confere.
 | `ui.surface.page` | `#ffffff` · dark `#0c0a09` | Fundo da página e dos campos. |
 | `ui.surface.panel` | `rgb(255 255 255 / 0.97)` · dark `rgb(28 25 23 / 0.97)` | Painéis e botões sobre o mapa; quase opaco, para o mapa aparecer de leve por trás. |
 | `ui.surface.scrim` | `rgb(0 0 0 / 0.45)` · dark `rgb(0 0 0 / 0.5)` | Véu sobre o mapa atrás de uma janela que pede uma escolha (a tela de boas-vindas). |
+| `ui.surface.credit` | `rgb(255 255 255 / 0.7)` · dark `rgb(28 25 23 / 0.7)` | Fundo leve dos créditos no canto do mapa: legíveis, mas deixando o mapa aparecer. |
 | `ui.content.primary` | `#1c1917` · dark `#f5f5f4` | Texto principal. |
 | `ui.content.secondary` | `#57534e` · dark `#a8a29e` | Texto de apoio: títulos de seção, horários, detalhes. |
 | `ui.border.default` | `#e7e5e4` · dark `#292524` | Bordas de painéis, campos e separadores de lista. |

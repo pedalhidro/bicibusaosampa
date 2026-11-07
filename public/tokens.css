@@ -33,6 +33,8 @@
   --ref-color-alpha-black-35: rgb(0 0 0 / 0.35);
   --ref-color-alpha-black-45: rgb(0 0 0 / 0.45);
   --ref-color-alpha-black-50: rgb(0 0 0 / 0.5);
+  --ref-color-alpha-white-70: rgb(255 255 255 / 0.7);
+  --ref-color-alpha-stone-900-70: rgb(28 25 23 / 0.7);
   --ref-space-2: 2px;
   --ref-space-4: 4px;
   --ref-space-8: 8px;
@@ -128,6 +130,8 @@
   --ui-type-label-tracking: var(--ref-font-tracking-none);
   --ui-type-caption: var(--ref-font-weight-400) var(--ref-font-size-12)/var(--ref-font-line-height-base) var(--ref-font-family-system);
   --ui-type-caption-tracking: var(--ref-font-tracking-none);
+  --ui-type-credit: var(--ref-font-weight-400) var(--ref-font-size-10)/var(--ref-font-line-height-none) var(--ref-font-family-system);
+  --ui-type-credit-tracking: var(--ref-font-tracking-none);
   --ui-type-overline: var(--ref-font-weight-600) var(--ref-font-size-12)/var(--ref-font-line-height-base) var(--ref-font-family-system);
   --ui-type-overline-tracking: var(--ref-font-tracking-wide);
   --ui-layer-sheet: 1000;
@@ -184,6 +188,7 @@
   --ui-surface-page: var(--ref-color-white);
   --ui-surface-panel: var(--ref-color-alpha-white-97);
   --ui-surface-scrim: var(--ref-color-alpha-black-45);
+  --ui-surface-credit: var(--ref-color-alpha-white-70);
   --ui-content-primary: var(--ref-color-stone-900);
   --ui-content-secondary: var(--ref-color-stone-600);
   --ui-border-default: var(--ref-color-stone-200);
@@ -200,6 +205,7 @@
     --ui-surface-page: var(--ref-color-stone-950);
     --ui-surface-panel: var(--ref-color-alpha-stone-900-97);
     --ui-surface-scrim: var(--ref-color-alpha-black-50);
+    --ui-surface-credit: var(--ref-color-alpha-stone-900-70);
     --ui-content-primary: var(--ref-color-stone-100);
     --ui-content-secondary: var(--ref-color-stone-400);
     --ui-border-default: var(--ref-color-stone-800);

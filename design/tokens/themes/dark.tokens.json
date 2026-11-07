@@ -11,6 +11,9 @@
       },
       "scrim": {
         "$value": "{ref.color.alpha.black-50}"
+      },
+      "credit": {
+        "$value": "{ref.color.alpha.stone-900-70}"
       }
     },
     "content": {

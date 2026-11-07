@@ -710,6 +710,26 @@
           }
         }
       },
+      "credit": {
+        "$value": {
+          "fontFamily": "{ref.font.family.system}",
+          "fontSize": "{ref.font.size.10}",
+          "fontWeight": "{ref.font.weight.400}",
+          "letterSpacing": "{ref.font.tracking.none}",
+          "lineHeight": "{ref.font.line-height.none}"
+        },
+        "$description": "Créditos obrigatórios no canto do mapa (OpenStreetMap, CARTO): o menor texto ainda legível, numa linha só.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "font"
+            ],
+            "avoid": [
+              "Não usar para texto que a pessoa precisa ler para usar o app."
+            ]
+          }
+        }
+      },
       "overline": {
         "$value": {
           "fontFamily": "{ref.font.family.system}",
