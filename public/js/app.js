@@ -46,8 +46,12 @@ const $ = (sel) => document.querySelector(sel);
 // (stations and parking fade as a whole in style.css). null = nothing planned.
 // A tapped bus does the same for its own line while its popup is open (busFocus wins
 // over the planner's focus, which comes back when the popup closes).
+// A tapped station, terminal, rail line or parking spot (its popup open) does the same
+// for itself: the rail lines it's on stay solid and thicker, and everything else
+// fades, down to the other stations and parking spots, one marker at a time.
 let focus = null; // { buses: Set(code), rails: Set(ref) | null }
-let planFocus = null, busFocus = null;
+let planFocus = null, busFocus = null, spotFocus = null;
+let spotMarker = null; // the tapped station, terminal or parking marker, kept solid
 const FADED = 0.2;
 const railOpacity = (line) => (focus?.rails && !focus.rails.has(String(line.ref)) ? FADED : 1);
 const busOpacity = (code) => (focus && !focus.buses.has(code) ? FADED : 1);
@@ -372,6 +376,16 @@ const lines = railConfig.lines.map((line) => ({ ...line, tracks: [], casings: []
 // maps, so they don't look like the (uncased) bus lines. The core keeps its dashes for
 // the bike status.
 const RAIL_CASING = MAP.rail.casing;
+// Line widths (px), and thicker for the lines in focus (a tapped station or line).
+const RAIL_WEIGHT = { core: 3, casing: 6, coreFocus: 5, casingFocus: 9 };
+
+/** A rail line's popup at `latlng`; the line stays in focus while it's open. */
+function openLinePopup(line, latlng) {
+  const popup = L.popup().setLatLng(latlng).setContent(linePopup(line)).openOn(map);
+  focusSpot([String(line.ref)]);
+  popup.on('remove', () => { if (spotFocus?.popup === popup) focusSpot(null); });
+  spotFocus.popup = popup;
+}
 const lineByRef = new Map(lines.map((l) => [l.ref, l]));
 
 function addRailGeometry(railGeo) {
@@ -380,10 +394,10 @@ function addRailGeometry(railGeo) {
       const line = lineByRef.get(f.properties.ref);
       if (!line) continue;
       const latlngs = f.geometry.coordinates.map((part) => part.map(([lon, lat]) => [lat, lon]));
-      line.casings.push(L.polyline(latlngs, { renderer: trackRenderer, weight: 6, color: RAIL_CASING, opacity: railOpacity(line), lineCap: 'round', interactive: false }).addTo(trackLayer));
+      line.casings.push(L.polyline(latlngs, { renderer: trackRenderer, weight: RAIL_WEIGHT.casing, color: RAIL_CASING, opacity: railOpacity(line), lineCap: 'round', interactive: false }).addTo(trackLayer));
       // Thin line in the bike status colour (set in renderRail), over the casing.
-      const track = L.polyline(latlngs, { renderer: trackRenderer, weight: 3, opacity: railOpacity(line), lineCap: 'round', bubblingMouseEvents: false });
-      track.on('click', (e) => L.popup().setLatLng(e.latlng).setContent(linePopup(line)).openOn(map));
+      const track = L.polyline(latlngs, { renderer: trackRenderer, weight: RAIL_WEIGHT.core, opacity: railOpacity(line), lineCap: 'round', bubblingMouseEvents: false });
+      track.on('click', (e) => openLinePopup(line, e.latlng));
       trackLayer.addLayer(track);
       line.tracks.push(track);
       line.bounds = track.getBounds();
@@ -394,7 +408,10 @@ function addRailGeometry(railGeo) {
       L.marker([lat, lon], { pane: 'stations', icon: stationIcon(modes), keyboard: false })
         .bindTooltip(esc(f.properties.name), { direction: 'top', offset: [0, -8] })
         .bindPopup(() => `<h3>${esc(f.properties.name)}</h3>${refs.map((r) => lineRow(lineByRef.get(r))).join('')}`)
-        .addTo(stationLayer);
+        .on('popupopen', (e) => focusSpot(refs.map(String), e.target))
+        .on('popupclose', () => focusSpot(null))
+        .addTo(stationLayer)
+        .refs = refs.map(String);
     }
   }
   // Every core above every casing: a neighbouring line's casing mustn't hide the
@@ -463,7 +480,7 @@ $('#rail-list').addEventListener('click', (e) => {
   const line = lineByRef.get(e.target.closest('li')?.dataset.ref);
   if (!line?.bounds) return;
   map.fitBounds(line.bounds, { padding: [40, 40] });
-  L.popup().setLatLng(line.bounds.getCenter()).setContent(linePopup(line)).openOn(map);
+  openLinePopup(line, line.bounds.getCenter());
 });
 
 async function refreshLive() {
@@ -516,6 +533,8 @@ function addTerminals(geo) {
     L.marker([lat, lon], { pane: 'stations', icon: terminalIcon(t.kind), keyboard: false })
       .bindTooltip(esc(t.name), { direction: 'top', offset: [0, -10] })
       .bindPopup(() => terminalPopup(t))
+      .on('popupopen', (e) => focusSpot([], e.target))
+      .on('popupclose', () => focusSpot(null))
       .addTo(stationLayer);
   }
 }
@@ -961,7 +980,9 @@ function loadParking() {
         const [lon, lat] = geometry.coordinates;
         const marker = L.marker([lat, lon], { pane: 'parking', keyboard: false, icon: parkingIcon(props.kind, 'livre') })
           .bindTooltip(esc(props.name ?? (props.kind === 'bicicletario' ? 'Bicicletário' : 'Paraciclo')), { direction: 'top', offset: [0, -10] })
-          .bindPopup(() => parkingPopup(props));
+          .bindPopup(() => parkingPopup(props))
+          .on('popupopen', (e) => focusSpot([], e.target))
+          .on('popupclose', () => focusSpot(null));
         parkingMarkers.push({ marker, props, layer: props.kind === 'bicicletario' ? bicicletarioLayer : paracicloLayer });
       }
       renderParking();
@@ -1008,9 +1029,32 @@ initTabs(document.querySelector('#layers-panel .tabs'));
 initUpdates();
 const locate = initLocate(map);
 
+/**
+ * Focus on a tapped spot: `rails` (refs) stay solid and thicker, `marker` stays solid,
+ * everything else fades. null undoes it.
+ */
+function focusSpot(rails, marker = null) {
+  spotFocus = rails ? { buses: new Set(), rails: new Set(rails) } : null;
+  spotMarker = rails ? marker : null;
+  applyFocus();
+}
+
+/** Station, terminal and parking markers: faded unless kept by the spot focus. */
+function dimSpots() {
+  const keep = (m) => !spotFocus || m === spotMarker || m.refs?.some((r) => spotFocus.rails.has(r));
+  stationLayer.eachLayer((m) => m.setOpacity(keep(m) ? 1 : FADED));
+  for (const { marker } of parkingMarkers) marker.setOpacity(keep(marker) ? 1 : FADED);
+}
+
 function applyFocus() {
-  focus = busFocus ?? planFocus;
-  for (const line of lines) for (const t of [...line.casings, ...line.tracks]) t.setStyle({ opacity: railOpacity(line) });
+  focus = busFocus ?? spotFocus ?? planFocus;
+  const thick = (line) => spotFocus?.rails.has(String(line.ref));
+  for (const line of lines) {
+    for (const t of line.casings) t.setStyle({ opacity: railOpacity(line), weight: thick(line) ? RAIL_WEIGHT.casingFocus : RAIL_WEIGHT.casing });
+    for (const t of line.tracks) t.setStyle({ opacity: railOpacity(line), weight: thick(line) ? RAIL_WEIGHT.coreFocus : RAIL_WEIGHT.core });
+    if (thick(line)) for (const t of line.tracks) t.bringToFront();
+  }
+  dimSpots();
   for (const line of busLineByCode.values()) for (const r of line.routes) r.setStyle({ opacity: busOpacity(line.code) });
   for (const bus of state.buses) busMarkers.get(busId(bus))?.setOpacity(busOpacity(bus.line));
   drawLowFloor();
@@ -1029,6 +1073,8 @@ function highlightBus(bus) {
   for (const [id, marker] of busMarkers) markTapped(marker, id);
   highlighted = line ? { code: line.code, sentido: line.routes.some((r) => r.sentido === bus.sentido) ? bus.sentido : null } : null;
   busFocus = line ? { buses: new Set([line.code]), rails: planFocus?.rails ?? null } : null;
+  // Stations, terminals and bike parking fade too (style.css), as with a planned route.
+  map.getContainer().classList.toggle('bus-focus', !!line);
   applyFocus();
   for (const r of busRouteLayer.getLayers()) {
     r.setStyle({ weight: weightOf(r) });

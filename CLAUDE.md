@@ -356,7 +356,11 @@ it). The rules below are what the colours *mean*; the tokens hold the values.
   stations and terminals, bus routes, live buses, bike parking and the
   low-floor buses (opt-in). Legenda: the colour and shape key (the menu has none).
 - **The tapped bus** is drawn bigger with a thicker outline while its popup is open;
-  its line's other buses stay solid and the rest fade.
+  its line's other buses stay solid and the rest fade, stations, terminals and bike
+  parking too (`#map.bus-focus`).
+- **A tapped station, terminal, rail line or parking spot** (popup open) keeps itself
+  and its rail lines solid (those lines drawn thicker, with their stations), and
+  everything else fades, one marker at a time (`focusSpot()` in app.js).
 
 ## Comfort features (keep them working)
 

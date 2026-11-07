@@ -35,12 +35,14 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 @media (min-width: 641px) { .leaflet-bottom { bottom: var(--sab); } }
 .leaflet-right { right: var(--sar); }
 
-/* With a planned route on the map, everything else fades. */
-/* The bus and rail lines it rides on stay solid (app.js focusLines()). */
+/* With a planned route on the map, or a bus tapped (its popup open), everything else
+   fades. The bus and rail lines in focus stay solid (app.js applyFocus()). */
 #map .leaflet-parking-pane,
 #map .leaflet-stations-pane { transition: opacity var(--ui-motion-duration-base) var(--ui-motion-easing-standard); }
 #map.route-shown .leaflet-parking-pane,
-#map.route-shown .leaflet-stations-pane { opacity: 0.25; }
+#map.route-shown .leaflet-stations-pane,
+#map.bus-focus .leaflet-parking-pane,
+#map.bus-focus .leaflet-stations-pane { opacity: 0.25; }
 
 .plan-label-layer { position: absolute; overflow: visible; pointer-events: none; }
 /* Labels along each leg of a planned trip, following the line (SVG textPath): white
