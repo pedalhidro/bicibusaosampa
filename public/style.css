@@ -653,11 +653,11 @@ button .icon, summary .icon { pointer-events: none; }
 .info-tip .tip-icons { display: inline-flex; align-items: center; gap: var(--ui-space-gap-2xs); margin-right: var(--ui-space-gap-xs); }
 
 /* Layers sheet: Camadas | Legenda tabs. */
-.tabs { display: flex; gap: var(--ui-space-gap-xs); }
+.tabs { display: flex; gap: var(--ui-space-gap-2xs); }
 .tabs { min-width: 0; }
 .tabs [role="tab"] {
   min-height: var(--ui-size-control-sm);
-  padding: 0 var(--ui-space-inset-sm);
+  padding: 0 var(--ui-space-inset-xs);
   border: 0;
   border-radius: var(--ui-radius-full);
   background: transparent;
@@ -769,6 +769,12 @@ button .icon, summary .icon { pointer-events: none; }
 /* Accessibility intent: a note where the planner would be. */
 .access-note[hidden] { display: none; }
 .access-note p { margin: 0 0 var(--ui-space-gap-sm); font: var(--ui-type-body-sm); }
+
+/* Info tab: what the app is and where the data comes from. */
+.info-panel p { margin: var(--ui-space-gap-sm) 0 0; font: var(--ui-type-body-sm); }
+.info-list { margin: 0; padding-left: var(--ui-space-inset-lg); font: var(--ui-type-body-sm); color: var(--ui-content-secondary); }
+.info-list li { margin: var(--ui-space-gap-xs) 0; }
+.info-panel a { color: var(--ui-accent-default); }
 
 /* Ajustes tab. */
 .intent-choices { margin: var(--ui-space-gap-sm) 0 0; padding: 0; border: 0; }

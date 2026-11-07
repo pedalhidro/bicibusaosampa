@@ -82,9 +82,12 @@ map.on('rotate', () => {
   tileTimer = setTimeout(() => map.eachLayer((l) => { if (l instanceof L.TileLayer) l._update(); }), 150);
 });
 L.control.zoom({ position: 'topleft', zoomInText: icon('zoom-in', 'icon-lg'), zoomInTitle: 'Aproximar', zoomOutText: icon('zoom-out', 'icon-lg'), zoomOutTitle: 'Afastar' }).addTo(map);
+// Only the credits that must stay on the map: OpenStreetMap (the base map and much of
+// the data, on every map) and CARTO when its base map is on (their terms: visible, not
+// behind a click). Everything else is in the layers sheet's Info tab.
 L.control.attribution({
   position: 'bottomright',
-  prefix: '<a href="https://github.com/danlessa/bicibusaosampa">Código</a> · SPTrans · EMTU · GeoSampa · Photon · <a href="https://leafletjs.com">Leaflet</a>',
+  prefix: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 // What's live, in one line on the map: tapping it opens the menu at the line lists.
 const liveChip = L.control({ position: 'bottomleft' });
@@ -120,10 +123,9 @@ window.addEventListener('sheetchange', trackSheets);
 let cartoKey = null;
 const dark = matchMedia('(prefers-color-scheme: dark)');
 const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const OSM_CREDIT = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const carto = (style) => ({
   url: () => `https://{s}.basemaps.cartocdn.com/${typeof style === 'function' ? style() : style}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`,
-  options: { subdomains: 'abcd', maxNativeZoom: 18, attribution: `${OSM_CREDIT} &copy; <a href="https://carto.com/attribution/">CARTO</a>` },
+  options: { subdomains: 'abcd', maxNativeZoom: 18, attribution: '&copy; <a href="https://carto.com/attribution/">CARTO</a>' },
 });
 // Offered once the key arrives, before "Nenhum".
 const CARTO_BASES = {
@@ -132,8 +134,8 @@ const CARTO_BASES = {
   voyager: { label: 'Voyager', ...carto('rastertiles/voyager') },
 };
 const BASES = {
-  osm: { label: 'OpenStreetMap', url: () => OSM_URL, options: { className: 'osm-tiles', attribution: OSM_CREDIT } },
-  osmLight: { label: 'OpenStreetMap claro', url: () => OSM_URL, options: { className: 'osm-tiles light', attribution: OSM_CREDIT } },
+  osm: { label: 'OpenStreetMap', url: () => OSM_URL, options: { className: 'osm-tiles' } },
+  osmLight: { label: 'OpenStreetMap claro', url: () => OSM_URL, options: { className: 'osm-tiles light' } },
   none: { label: 'Nenhum', url: null },
 };
 const baseLayer = (key) => {
@@ -147,7 +149,6 @@ const topoLayer = L.tileLayer('https://telhas.pedalhidrografi.co/rmsampa-v2/{z}/
   minNativeZoom: 8,
   maxNativeZoom: 16,
   bounds: [[-24.207, -47.461], [-22.918, -45.703]],
-  attribution: 'Topografia: <a href="https://amora.pedalhidrografi.co/">Pedal Hidrográfico</a>',
 });
 // On phones the relief starts off: two tile layers double the images to load and draw.
 const BASE_DEFAULTS = { base: 'osm', opacity: 1, topo: { on: !matchMedia('(max-width: 640px)').matches, opacity: 0.2 } };
@@ -445,7 +446,7 @@ function renderLiveChip() {
   if (state.busesLoaded) {
     const sptrans = state.buses.filter((b) => !isEmtu(b)).length;
     const emtu = state.buses.filter(isEmtu).length;
-    parts.push(state.busError ? ['bus', 'sem posições', 'ônibus sem posições ao vivo'] : ['bus', `${sptrans} com suporte ao vivo`, `${sptrans} ônibus com suporte para bici ao vivo`]);
+    parts.push(state.busError ? ['bus', 'sem posições', 'ônibus sem posições ao vivo'] : ['bus', `${sptrans} aceitando bici ao vivo`, `${sptrans} ônibus aceitando bici ao vivo`]);
     if (!state.emtuError) parts.push(['bus', `${emtu} seletivos EMTU`, `${emtu} seletivos EMTU ao vivo`]);
   }
   el.innerHTML = parts.map(([glyph, short]) => `<span>${icon(glyph, 'icon-sm')}${esc(short)}</span>`).join('');

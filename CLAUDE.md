@@ -78,8 +78,10 @@ append `window.__map = map;`.
       (heading − bearing), route trail icons (+ bearing), route labels.
     - On phones tile layers only refresh on moveend, so app.js calls `_update()` on
       them after a rotation.
-    - Credits are Leaflet's attribution control (bottom right; CARTO needs them on
-      the map), next to a live chip (bottom left: rail lines open to bikes, rack buses
+    - Only the required credits stay on the map, in Leaflet's attribution control
+      (bottom right): © OpenStreetMap always, © CARTO with a CARTO base map (their
+      terms: visible, not behind a click). All other credits and data sources are in
+      the ⧉ sheet's **Info** tab. Next to them, a live chip (bottom left: rail lines open to bikes, rack buses
       and EMTU coaches live; tapping it opens the line lists). Both ride above the
       phone sheet via `--sheet-bottom`. The menu has no footer.
   - Pure modules, imported by the tests too:

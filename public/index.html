@@ -196,6 +196,7 @@
         <button type="button" role="tab" id="tab-layers" aria-controls="tabpanel-layers" aria-selected="true">Camadas</button>
         <button type="button" role="tab" id="tab-legend" aria-controls="tabpanel-legend" aria-selected="false" tabindex="-1">Legenda</button>
         <button type="button" role="tab" id="tab-settings" aria-controls="tabpanel-settings" aria-selected="false" tabindex="-1">Ajustes</button>
+        <button type="button" role="tab" id="tab-info" aria-controls="tabpanel-info" aria-selected="false" tabindex="-1">Info</button>
       </div>
     </header>
     <div class="sheet-body">
@@ -214,6 +215,25 @@
           <button type="button" id="welcome-again">Ver a tela de boas-vindas</button>
           <button type="button" id="reset-prefs">Voltar ao padrão</button>
         </div>
+      </div>
+      <div id="tabpanel-info" role="tabpanel" aria-labelledby="tab-info" class="info-panel" hidden>
+        <p>Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, e de onde deixar a bici. <a href="https://github.com/pedalhidro/bicibusaosampa">Código aberto no GitHub</a>.</p>
+        <h3 class="legend-title">Dados</h3>
+        <ul class="info-list">
+          <li><a href="https://www.sptrans.com.br/desenvolvedores/">SPTrans</a>: ônibus ao vivo (Olho Vivo), linhas e horários (GTFS), cadastro da frota</li>
+          <li><a href="https://www.emtu.sp.gov.br/">EMTU</a>: seletivos ao vivo, itinerários e pontos</li>
+          <li><a href="https://trilhos.motiva.com.br/">Motiva</a>: situação das linhas de metrô e trem (Metrô, CPTM, ViaQuatro, ViaMobilidade)</li>
+          <li><a href="https://geosampa.prefeitura.sp.gov.br/">GeoSampa</a> (Prefeitura de SP): bicicletários, terminais e itinerários</li>
+          <li><a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>: mapa de fundo, trilhos, estações, ruas e bicicletários</li>
+          <li><a href="https://amora.pedalhidrografi.co/">Pedal Hidrográfico</a>: topográfico colorido e o modelo de esforço da bici (amora)</li>
+        </ul>
+        <h3 class="legend-title">Mapa e busca</h3>
+        <ul class="info-list">
+          <li><a href="https://carto.com/attribution/">CARTO</a>: mapas de fundo Positron e Voyager</li>
+          <li><a href="https://photon.komoot.io/">Photon</a> (komoot): busca de endereços</li>
+          <li><a href="https://leafletjs.com">Leaflet</a> e leaflet-rotate (GPL-3.0, com ajustes da Câmera Topográfica)</li>
+          <li><a href="https://tabler.io/icons">Tabler Icons</a> (MIT); símbolos do Metrô e da CPTM do Wikimedia Commons</li>
+        </ul>
       </div>
       <div id="tabpanel-legend" role="tabpanel" aria-labelledby="tab-legend" hidden>
       <h3 class="legend-title">Metrô e trens</h3>

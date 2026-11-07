@@ -59,12 +59,12 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
   zoom 12. Saem do cadastro da frota da SPTrans (10/04/2026), que diz a porta de
   embarque em nível; os demais ônibus da frota são de piso alto, com elevador.
 
-O botão de camadas, no canto superior direito, tem três abas (a terceira, Ajustes). Em **Camadas**: o mapa
+O botão de camadas, no canto superior direito, tem quatro abas: Camadas, Legenda, Ajustes e Info (o que é o app e de onde vêm os dados). Em **Camadas**: o mapa
 de fundo (OpenStreetMap, OpenStreetMap claro, Positron e Voyager da CARTO, ou nenhum), o topográfico colorido
 por cima, e liga e desliga trilhos, estações e terminais, itinerários, ônibus ao vivo,
 bicicletários e os ônibus de piso baixo. Em **Legenda**: o que cada
-cor e forma quer dizer. Os créditos ficam no canto do mapa, ao lado de um resumo do
-que está ao vivo (toque nele para ver as linhas).
+cor e forma quer dizer. No canto do mapa ficam só os créditos obrigatórios (OpenStreetMap e, com os mapas da
+CARTO, a CARTO), ao lado de um resumo do que está ao vivo (toque nele para ver as linhas).
 
 Na primeira visita, o app pergunta **o que você quer fazer**: explorar o entorno,
 chegar num lugar de bicicleta ou chegar num lugar com acessibilidade (por enquanto só
