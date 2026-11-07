@@ -41,7 +41,7 @@ function recall(key) {
  * covered by the menu sheets; railLines: Map ref → rail-lines.json line;
  * getBuses(): live /api/buses vehicles, or null when they couldn't be loaded.
  */
-export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines, getBuses, focusLines }) {
+export function initPlanner({ map, rotatingPane, markerPane, locate, sheetInsets, railLines, getBuses, focusLines }) {
   const details = $('#plan-details');
   const status = $('#plan-status');
   const results = $('#plan-results');
@@ -65,11 +65,11 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
   // (700). SVG, not canvas: a canvas this high would swallow clicks meant for the buses
   // and stations underneath.
   rotatingPane('plan').style.zIndex = 640;
-  const iconPane = map.createPane('planIcons');
+  const iconPane = markerPane('planIcons');
   iconPane.style.zIndex = 642;
   iconPane.style.pointerEvents = 'none';
-  map.createPane('planPins').style.zIndex = 655;
-  const labelPane = map.createPane('planLabels');
+  markerPane('planPins').style.zIndex = 655;
+  const labelPane = markerPane('planLabels');
   labelPane.style.zIndex = 660;
   labelPane.style.pointerEvents = 'none';
   const renderer = L.svg({ pane: 'plan' });

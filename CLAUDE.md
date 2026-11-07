@@ -74,9 +74,12 @@ append `window.__map = map;`.
     Topográfica (steadier touch rotation and pinch anchor). Map rotation: two fingers
     on phones, Shift + wheel with a mouse; a compass button resets north.
     - **Vector layers must live in the rotating pane** (`rotatingPane(name)` in app.js,
-      `map.getPane('rotatePane')`), or lines stay put while tiles turn. Marker panes stay
-      in the map pane (they're positioned with rotation, but drawn upright) and stack
-      above the whole rotating pane.
+      `map.getPane('rotatePane')`), or lines stay put while tiles turn. **Marker panes
+      go in leaflet-rotate's `norotatePane`** (`markerPane(name)` in app.js): they're
+      positioned with rotation but drawn upright, and stack above the rotating pane.
+      There they sit with Leaflet's marker (600), tooltip (650) and popup (700) panes;
+      a pane made in the map pane itself stacks above that whole group (z 400) and
+      covers the popups.
     - Anything drawn with an on-screen direction needs `map.getBearing()`: bus arrows
       (heading − bearing), route trail icons (+ bearing), route labels.
     - On phones tile layers only refresh on moveend, so app.js calls `_update()` on
@@ -234,6 +237,11 @@ append `window.__map = map;`.
 
 ## Gotchas
 
+- **Pages turns `<link rel="modulepreload">` / `preload` into `Link` headers**, which
+  ride on every HTML response. Keep their hrefs root-absolute (`/js/…`). `404.html`
+  must stay: without it Pages answers a missing file (e.g. `data/lines/<code>.json`
+  of a line with no file) with `index.html`, whose relative hints the browser followed
+  into an endless `/data/lines/js/js/…` loop.
 - **Cloudflare's Pages build compiles Functions with wrangler 3.x.** Its bundler rejects
   JSON import attributes (`with { type: 'json' }`), even though local wrangler 4 accepts
   them. Keep JSON imports plain inside `functions/`. Logic that Node tests need goes in

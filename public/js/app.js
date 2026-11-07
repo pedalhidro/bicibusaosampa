@@ -65,6 +65,12 @@ const map = L.map('map', {
 }).setView(DEFAULT_VIEW.center, DEFAULT_VIEW.zoom);
 /** A pane whose content turns with the map: every vector layer (lines) goes in one. */
 const rotatingPane = (name) => map.createPane(name, map.getPane('rotatePane'));
+/**
+ * A pane for upright markers. It must sit inside leaflet-rotate's norotatePane with
+ * Leaflet's own marker (600), tooltip (650) and popup (700) panes: a pane made in the
+ * map pane stacks above that whole group (z 400), popups included.
+ */
+const markerPane = (name) => map.createPane(name, map.getPane('norotatePane') ?? undefined);
 
 // The compass shows while the map is turned; tapping it puts north up again.
 const compass = $('#compass-btn');
@@ -184,8 +190,8 @@ rotatingPane('busRoutes').style.zIndex = 410;
 const busRouteRenderer = L.canvas({ pane: 'busRoutes', tolerance: 4 });
 rotatingPane('lowFloor').style.zIndex = 412;
 const lowFloorRenderer = L.canvas({ pane: 'lowFloor', tolerance: 6 });
-map.createPane('parking').style.zIndex = 418;
-map.createPane('stations').style.zIndex = 420;
+markerPane('parking').style.zIndex = 418;
+markerPane('stations').style.zIndex = 420;
 
 const trackLayer = L.layerGroup();
 const stationLayer = L.layerGroup();
@@ -1046,6 +1052,7 @@ map.on('rotate', () => {
 initPlanner({
   map,
   rotatingPane,
+  markerPane,
   focusLines,
   locate,
   sheetInsets,
