@@ -14,6 +14,8 @@
 //     and are pushed (walking pace) on footways, pedestrian streets and steps.
 // Energies are net metabolic joules (above resting); times are seconds.
 
+import { compilePriority, ROAD_CLASSES } from './custom-model.js';
+
 export const RIDER = { body: 65, mass: 75, crr: 0.008, cda: 0.5, rho: 1.1, kEff: 0.97 };
 const G = 9.81;
 const MUSCLE_EFFICIENCY = 0.25;
@@ -161,10 +163,36 @@ export function walkCost(grade) {
 const GRADE_STEP = 0.0025, GRADE_MAX = 0.3, GRADE_BINS = Math.round((2 * GRADE_MAX) / GRADE_STEP) + 1;
 
 /**
- * Speed and energy model of a rider at `power` W on the flat. `avoidArterials` steers
- * the route off busy roads without bike infrastructure (see ARTERIAL_PENALTY).
+ * Road preferences of a custom model (custom-model.js) as a table of comfort factors
+ * (1 / priority; Infinity = never) per edge flags and grade bin, for the bike (riding
+ * or pushing). Built once per model: the search only looks values up.
  */
-export function bikeModel(power, { avoidArterials = false } = {}) {
+function comfortTable(model) {
+  const priority = compilePriority(model.priority);
+  const table = new Float32Array(256 * GRADE_BINS);
+  const edge = {};
+  for (let flags = 0; flags < 256; flags++) {
+    edge.road_class = ROAD_CLASSES[flags & 7];
+    edge.bike_infra = !!(flags & FLAG.infra);
+    edge.oneway = !!(flags & FLAG.oneway);
+    edge.push = !!(flags & FLAG.push);
+    for (let b = 0; b < GRADE_BINS; b++) {
+      edge.average_slope = (b * GRADE_STEP - GRADE_MAX) * 100;
+      const p = priority(edge);
+      table[flags * GRADE_BINS + b] = p > 0 ? 1 / p : Infinity;
+    }
+  }
+  return table;
+}
+const comfortTables = new Map(); // model JSON -> table
+
+/**
+ * Speed and energy model of a rider at `power` W on the flat. Road preferences: a custom
+ * model ({ priority: [...] }, see custom-model.js) when given; otherwise the built-in
+ * comfort table, plus `avoidArterials` to steer off busy roads without bike
+ * infrastructure (see ARTERIAL_PENALTY).
+ */
+export function bikeModel(power, { avoidArterials = false, model = null } = {}) {
   const vFlat = solveSpeed(power, 0);
   const speed = new Float64Array(GRADE_BINS);
   for (let b = 0; b < GRADE_BINS; b++) {
@@ -183,8 +211,16 @@ export function bikeModel(power, { avoidArterials = false } = {}) {
     beta: (RIDER.mass * G) / RIDER.kEff,
     abRatio: RIDER.crr + aero / (RIDER.mass * G),
   };
-  return { power, vFlat, speed, cost, avoidArterials };
+  let comfort = null;
+  if (model) {
+    const key = JSON.stringify(model.priority ?? []);
+    if (!comfortTables.has(key)) comfortTables.set(key, comfortTable(model));
+    comfort = comfortTables.get(key);
+  }
+  return { power, vFlat, speed, cost, avoidArterials, comfort };
 }
+
+const gradeBin = (grade) => Math.max(0, Math.min(GRADE_BINS - 1, Math.round((grade + GRADE_MAX) / GRADE_STEP)));
 
 /** amora's v2 leg energy (J) for `d` m with height change `dh` m. */
 function legEnergy(d, dh, c) {
@@ -206,11 +242,13 @@ export function edgeCost(mode, d, dh, flags, bike) {
     const mass = pushing ? RIDER.mass : RIDER.body;
     const v = cls === 7 ? STEPS_MPS : walkSpeed(grade) * (pushing ? PUSH_FACTOR : 1);
     const t = d / v;
-    return { t, e: walkCost(grade) * mass * d, comfort: 1 };
+    const comfort = pushing && bike.comfort ? bike.comfort[flags * GRADE_BINS + gradeBin(grade)] : 1;
+    return { t, e: walkCost(grade) * mass * d, comfort };
   }
-  const b = Math.max(0, Math.min(GRADE_BINS - 1, Math.round((grade + GRADE_MAX) / GRADE_STEP)));
+  const b = gradeBin(grade);
   const t = d / bike.speed[b];
   const e = Math.max(PASSIVE_W * t, legEnergy(d, dh, bike.cost) / MUSCLE_EFFICIENCY);
+  if (bike.comfort) return { t, e, comfort: bike.comfort[flags * GRADE_BINS + b] };
   let comfort = flags & FLAG.infra ? Math.min(LANE_COMFORT, BIKE_COMFORT[cls]) : BIKE_COMFORT[cls];
   if (bike.avoidArterials && cls >= 3 && cls <= 5 && !(flags & FLAG.infra)) comfort *= ARTERIAL_PENALTY;
   return { t, e, comfort };
@@ -325,6 +363,7 @@ export function streetSearch(g, { sources, mode, bike, optimize = 'time', maxTim
       if (riding && flags & FLAG.oneway && !forward) continue;
       const dh = reverse ? g.elev[x] - g.elev[y] : g.elev[y] - g.elev[x];
       const c = edgeCost(mode, g.len[e], dh, flags, bike);
+      if (c.comfort === Infinity) continue; // left out by the road preferences
       const t = tx + c.t, en = s.energy[x] + c.e;
       const cost = s.cost[x] + (optimize === 'energy' ? c.e * c.comfort : c.t * c.comfort);
       if (cost < s.cost[y]) {

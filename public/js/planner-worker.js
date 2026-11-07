@@ -4,7 +4,9 @@
 //
 // Messages (every reply echoes `id`):
 //   { kind: 'load' }                                   → { kind: 'loaded' }
-//   { kind: 'plan', from, to, profile, power, optimize, timeWeight, avoidArterials, at, vehicles }
+//   { kind: 'plan', from, to, profile, power, optimize, timeWeight, model, networks, at, vehicles }
+//        model = road preferences { priority } (custom-model.js composeModel)
+//        networks = which of raptor.js NETWORKS ('sptrans', 'rail', 'emtu') may be ridden
 //        at = epoch ms; vehicles = /api/buses vehicles, or null to use the usual lines
 //                                                      → { kind: 'done', journeys, live, streets }
 //   failure                                            → { kind: 'error', message }
@@ -87,7 +89,7 @@ self.onmessage = async ({ data: m }) => {
     }
     const day = queryDay(net, new Date(m.at));
     const live = m.vehicles ? liveTrips(net, m.vehicles, day) : null;
-    const journeys = plan(net, { from: m.from, to: m.to, profile: m.profile, power: m.power, optimize: m.optimize, timeWeight: m.timeWeight, avoidArterials: m.avoidArterials, live, day });
+    const journeys = plan(net, { from: m.from, to: m.to, profile: m.profile, power: m.power, optimize: m.optimize, timeWeight: m.timeWeight, model: m.model, networks: m.networks, live, day });
     self.postMessage({ id: m.id, kind: 'done', journeys, live: !!live, streets: !!net.streets });
   } catch (err) {
     self.postMessage({ id: m.id, kind: 'error', message: err?.message ?? String(err) });

@@ -3,6 +3,7 @@
 
 import { placeName, searchPlaces } from './geocode.js';
 import { ACCESS } from './parking.js';
+import { compilePriority, composeModel } from './custom-model.js';
 import { balance, DEFAULT_TIME_WEIGHT, flatSpeed, POWER_LEVELS, TIME_WEIGHTS } from './raptor.js';
 import { spParts } from './time.js';
 import { icon } from './icons.js';
@@ -50,7 +51,10 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
   power.innerHTML = PACES.map(([key, name]) =>
     `<option value="${key}">${name} · ${POWER_LEVELS[key]} W · ~${Math.round(flatSpeed(POWER_LEVELS[key]) * 3.6)} km/h</option>`).join('');
   power.value = recall('planPower') ?? 'endorfinado';
-  const savedProfile = recall('planProfile');
+  // The intermodal-on-foot profile ('walk') is no longer offered: this is a planner
+  // for cyclists. Saved choices and old shared links fall back to bike + transit.
+  const offered = (m) => (m === 'walk' ? 'carry' : m);
+  const savedProfile = offered(recall('planProfile'));
   if (savedProfile) for (const r of document.querySelectorAll('input[name="plan-profile"]')) r.checked = r.value === savedProfile;
   const savedOptimize = recall('planOptimize');
   if (savedOptimize) for (const r of document.querySelectorAll('input[name="plan-optimize"]')) r.checked = r.value === savedOptimize;
@@ -272,7 +276,7 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
     update();
   });
 
-  $('#plan-clear').addEventListener('click', () => {
+  function clearTrip() {
     stops = [null, null];
     syncMarkers();
     renderStops();
@@ -290,7 +294,10 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
     map.getContainer().classList.remove('route-shown');
     setPlanned(false);
     writeLink();
-  });
+  }
+  $('#plan-clear').addEventListener('click', clearTrip);
+  // With a route shown the form is folded: this one clears it without unfolding.
+  $('#plan-clear-route').addEventListener('click', () => { clearTrip(); toast('Rota limpa'); });
 
   // ---------------------------------------------------------------- place search
 
@@ -488,21 +495,90 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
     selected = 0;
     render();
   });
+  // Which transit networks the trip may use (each fare adds up): saved as a list.
+  const networkBoxes = [...document.querySelectorAll('input[name="plan-network"]')];
+  try {
+    const saved = JSON.parse(recall('planNetworks') ?? 'null');
+    if (Array.isArray(saved)) for (const b of networkBoxes) b.checked = saved.includes(b.value);
+  } catch {}
+  const networks = () => networkBoxes.filter((b) => b.checked).map((b) => b.value);
+  for (const b of networkBoxes) b.addEventListener('change', () => { remember('planNetworks', JSON.stringify(networks())); update(); });
   const at = $('#plan-at');
-  const arterials = $('#plan-arterials');
-  arterials.checked = recall('planAvoidArterials') !== '0';
-  arterials.addEventListener('change', () => { remember('planAvoidArterials', arterials.checked ? '1' : '0'); update(); });
-  // One plain sentence under the mode buttons says what the selected mode does.
-  const MODE_CAPTION = {
-    bike: 'Bici + ônibus e trilhos; dá para deixar a bici num bicicletário',
-    carry: 'Bici + ônibus e trilhos, sempre levando a bici',
-    walk: 'Ônibus e trilhos, a pé',
-    cycle: 'Só de bicicleta, sem transporte público',
-  };
+
+  // Road preferences of the bike legs: a style (data/bike-models.json, GraphHopper-like
+  // custom models) plus the preferences ticked, or the person's own rules ("custom").
+  const style = $('#plan-style');
+  const customBox = $('#plan-custom'), customJson = $('#plan-custom-json'), customError = $('#plan-custom-error');
+  let bikeModels = null; // data/bike-models.json, once loaded
+  let customModel = null; // { priority } typed in by the person
+  try { customModel = JSON.parse(recall('planCustomModel') ?? 'null'); } catch {}
+  const modelsLoaded = fetch(new URL('../data/bike-models.json', import.meta.url))
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .then((config) => {
+      bikeModels = config;
+      // Without the file the planner keeps its built-in preferences; no empty select.
+      $('#plan-style-field').classList.toggle('no-models', !config);
+      if (!config) return;
+      const names = Object.entries(config.models);
+      style.innerHTML = names.map(([key, m]) => `<option value="${esc(key)}">${esc(m.name)}</option>`).join('')
+        + '<option value="custom">Personalizado (regras)</option>';
+      const saved = recall('planStyle');
+      style.value = saved === 'custom' || config.models[saved] ? saved : config.default;
+      $('#info-style').innerHTML = names.map(([, m]) => `<p><b>${esc(m.name)}</b> ${esc(m.description ?? '')}</p>`).join('')
+        + '<p><b>Personalizado</b> Suas próprias regras de prioridade por tipo de rua, ciclovia e subida.</p>'
+        + '<p>Os estilos mudam só o caminho escolhido; tempo e kcal mostrados são os reais.</p>';
+      // Preferences: saved choice, else each one's default ("Evitar avenidas" also
+      // remembers the old single checkbox).
+      let ticked = null;
+      try { ticked = JSON.parse(recall('planPrefs') ?? 'null'); } catch {}
+      ticked ??= Object.entries(config.preferences)
+        .filter(([key, p]) => (key === 'avoidArterials' && recall('planAvoidArterials') === '0' ? false : p.default))
+        .map(([key]) => key);
+      $('#plan-prefs').innerHTML = Object.entries(config.preferences).map(([key, p]) => `
+        <label class="plan-check"><input type="checkbox" name="plan-pref" value="${esc(key)}" ${ticked.includes(key) ? 'checked' : ''}> ${esc(p.name)}</label>`).join('');
+      syncStyle();
+    });
+  const prefs = () => [...document.querySelectorAll('input[name="plan-pref"]:checked')].map((b) => b.value);
+  function syncStyle() {
+    customBox.hidden = style.value !== 'custom';
+    if (style.value === 'custom' && !customJson.value) {
+      // Start from the rules of the default style, to edit.
+      const start = customModel ?? composeModel(bikeModels, bikeModels.default, []);
+      customJson.value = JSON.stringify(start, null, 2);
+    }
+  }
+  /** The road preferences sent to the planner, or null to use the built-in ones. */
+  function roadModel() {
+    if (!bikeModels) return null;
+    return composeModel(bikeModels, style.value, prefs(), style.value === 'custom' ? customModel : null);
+  }
+  style.addEventListener('change', () => { remember('planStyle', style.value); syncStyle(); update(); });
+  $('#plan-prefs').addEventListener('change', () => { remember('planPrefs', JSON.stringify(prefs())); update(); });
+  $('#plan-custom-apply').addEventListener('click', () => {
+    try {
+      const model = JSON.parse(customJson.value);
+      compilePriority(model.priority); // throws with a readable message
+      customModel = { priority: model.priority };
+      remember('planCustomModel', JSON.stringify(customModel));
+      customError.textContent = 'Regras aplicadas.';
+      update();
+    } catch (err) {
+      customError.textContent = `Não deu: ${err.message}`;
+    }
+  });
+  // The explanations of the modes and priorities sit behind (i) buttons.
+  for (const btn of document.querySelectorAll('#plan-details .info-btn')) {
+    btn.addEventListener('click', () => {
+      const tip = document.getElementById(btn.getAttribute('aria-controls'));
+      tip.hidden = !tip.hidden;
+      btn.setAttribute('aria-expanded', String(!tip.hidden));
+    });
+  }
   function syncPower() {
     $('#plan-power-field').hidden = profile() === 'walk';
-    $('#plan-arterials-field').hidden = profile() === 'walk';
-    $('#plan-mode-caption').textContent = MODE_CAPTION[profile()] ?? '';
+    $('#plan-style-field').hidden = profile() === 'walk';
+    $('#plan-networks').hidden = profile() === 'cycle';
   }
   syncPower();
   for (const r of document.querySelectorAll('input[name="plan-profile"]')) {
@@ -530,11 +606,12 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
     const later = at.value ? new Date(`${at.value}-03:00`) : null;
     const vehicles = later ? null : getBuses();
     const mode = optimize();
-    const options = { profile: profile(), optimize: mode, timeWeight: timeWeight(), avoidArterials: arterials.checked, power: POWER_LEVELS[power.value], vehicles };
-    if (!loaded) {
+    const options = { profile: profile(), optimize: mode, timeWeight: timeWeight(), avoidArterials: true, model: roadModel(), networks: profile() === 'cycle' ? [] : networks(), power: POWER_LEVELS[power.value], vehicles };
+    if (!loaded || !bikeModels) {
       status.textContent = 'Preparando o planejador…';
-      await ensureLoaded();
+      await Promise.all([ensureLoaded(), modelsLoaded]);
       if (id !== searchId) return;
+      options.model = roadModel();
     }
     status.textContent = 'Calculando…';
 
@@ -578,9 +655,10 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
     }
     selected = 0;
     const live = later || profile() === 'cycle' ? '' : reply.live ? ' · ônibus ao vivo' : '';
+    const noTransit = profile() !== 'cycle' && !options.networks.length ? ' · nenhum transporte marcado em Mais opções' : '';
     status.textContent = points.length > 2
       ? `Com ${points.length - 2} ${points.length === 3 ? 'parada' : 'paradas'}${live}`
-      : `${journeys.length} ${journeys.length === 1 ? 'opção' : 'opções'}${live}`;
+      : `${journeys.length} ${journeys.length === 1 ? 'opção' : 'opções'}${live}${noTransit}`;
     render();
   }
 
@@ -654,6 +732,7 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
   function render() {
     setPlanned(journeys.length > 0);
     $('#plan-share').hidden = !journeys.length;
+    $('#plan-clear-route').hidden = !journeys.length;
     if (journeys.length) window.dispatchEvent(new Event('plan-results'));
     writeLink();
     results.innerHTML = journeys.map((j, i) => `
@@ -1078,7 +1157,7 @@ export function initPlanner({ map, rotatingPane, locate, sheetInsets, railLines,
   const shared = new URLSearchParams(location.hash.slice(1));
   const sharedPts = (shared.get('p') ?? '').split(';').map((x) => x.split(',').map(Number)).filter((x) => x.length === 2 && x.every(Number.isFinite));
   if (sharedPts.length >= 2) {
-    const mode = shared.get('m');
+    const mode = offered(shared.get('m'));
     for (const r of document.querySelectorAll('input[name="plan-profile"]')) if (r.value === mode) r.checked = true;
     syncPower();
     stops = sharedPts.map(([lat, lon]) => ({ lat, lon, label: `${lat.toFixed(4)}, ${lon.toFixed(4)}` }));

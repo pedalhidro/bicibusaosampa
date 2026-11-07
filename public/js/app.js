@@ -10,7 +10,7 @@ import { bikeStatus, describeTime } from './schedule.js';
 import { holidayName, spParts } from './time.js';
 import { icon } from './icons.js';
 import { tokens } from './tokens.js';
-import { initSheets, initUpdates, sheetInsets } from './ui.js';
+import { initSheets, initTabs, initUpdates, setSheetOpen, sheetInsets, toast } from './ui.js';
 
 const RAIL_REFRESH_MS = 60_000;
 const BUS_REFRESH_MS = 20_000;
@@ -42,7 +42,7 @@ const STATUS_LABELS = { ok: 'Bici liberada', wait: 'Fora do horário da bici', c
 const $ = (sel) => document.querySelector(sel);
 
 // While a planned trip is on the map, the bus and rail lines it doesn't use fade out
-// (stops, stations and parking fade as a whole in style.css). null = nothing planned.
+// (stations and parking fade as a whole in style.css). null = nothing planned.
 // A tapped bus does the same for its own line while its popup is open (busFocus wins
 // over the planner's focus, which comes back when the popup closes).
 let focus = null; // { buses: Set(code), rails: Set(ref) | null }
@@ -56,7 +56,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 
 // Rotation (leaflet-rotate): two fingers turning on phones, Shift + wheel with a mouse.
 // Lines and tiles turn with the map (they live in its rotatePane); markers stay upright.
-// The OSM / data credits live in the menu footer instead of the map corner.
+// Credits sit in the map corner (CARTO's terms want them visible on the map), next to
+// a chip with what's live right now; both stay above the phone's bottom sheet.
 const map = L.map('map', {
   zoomControl: false, preferCanvas: true, attributionControl: false,
   rotate: true, touchRotate: true, rotateControl: false, bearing: 0,
@@ -80,66 +81,125 @@ map.on('rotate', () => {
   tileTimer = setTimeout(() => map.eachLayer((l) => { if (l instanceof L.TileLayer) l._update(); }), 150);
 });
 L.control.zoom({ position: 'topleft', zoomInText: icon('zoom-in', 'icon-lg'), zoomInTitle: 'Aproximar', zoomOutText: icon('zoom-out', 'icon-lg'), zoomOutTitle: 'Afastar' }).addTo(map);
-
-// Base maps. OSM is desaturated in style.css so the line colours stand out; the
-// coloured relief is Pedal Hidrográfico's topo-hydrographic map of Greater SP
-// (rmsampa-v2: native tiles at zooms 8–16 inside its bounding box).
-const BASE_MAPS = {
-  osm: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    className: 'osm-tiles',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }),
-  topo: L.tileLayer('https://telhas.pedalhidrografi.co/rmsampa-v2/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    minNativeZoom: 8,
-    maxNativeZoom: 16,
-    bounds: [[-24.207, -47.461], [-22.918, -45.703]],
-    attribution: 'Topografia colorida · <a href="https://amora.pedalhidrografi.co/">Pedal Hidrográfico</a>',
-  }),
+L.control.attribution({
+  position: 'bottomright',
+  prefix: '<a href="https://github.com/danlessa/bicibusaosampa">Código</a> · SPTrans · EMTU · GeoSampa · Photon · <a href="https://leafletjs.com">Leaflet</a>',
+}).addTo(map);
+// What's live, in one line on the map: tapping it opens the menu at the line lists.
+const liveChip = L.control({ position: 'bottomleft' });
+liveChip.onAdd = () => {
+  const el = L.DomUtil.create('button', 'live-chip');
+  el.type = 'button';
+  L.DomEvent.disableClickPropagation(el);
+  el.addEventListener('click', () => {
+    setSheetOpen('panel', true);
+    const target = $('#rail-details');
+    target.open = true;
+    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+  return el;
 };
-// Base maps stack (bottom to top, in this order), each with its own opacity.
-const BASE_LABELS = { osm: 'OpenStreetMap', topo: 'Topográfico colorido' };
+liveChip.addTo(map);
+// Phones: the bottom controls ride above whichever sheet is open.
+const trackSheets = () => document.documentElement.style.setProperty('--sheet-bottom', `${sheetInsets().bottom}px`);
+const sheetObserver = new ResizeObserver(trackSheets);
+for (const id of ['panel', 'layers-panel']) sheetObserver.observe(document.getElementById(id));
+window.addEventListener('sheetchange', trackSheets);
+
+// Base maps: one background map (radio) under an optional coloured relief. OSM is
+// desaturated in style.css so the line colours stand out ("claro" lightens it further);
+// the relief is Pedal Hidrográfico's topo-hydrographic map of Greater SP (rmsampa-v2:
+// native tiles at zooms 8–16 inside its bounding box), drawn over the background.
+//
+// CARTO's Positron and Voyager are cleaner, but since 2026-09 every CARTO tile request
+// needs a (free, domain-locked) key. It comes from the CARTO_API_KEY environment
+// variable through /api/config; without it (or offline) those options aren't offered.
+// CARTO's terms: attribution visible on the map, no browser cache over 30 days, no
+// server-side proxying.
+let cartoKey = null;
+const dark = matchMedia('(prefers-color-scheme: dark)');
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_CREDIT = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const carto = (style) => ({
+  url: () => `https://{s}.basemaps.cartocdn.com/${typeof style === 'function' ? style() : style}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`,
+  options: { subdomains: 'abcd', maxNativeZoom: 18, attribution: `${OSM_CREDIT} &copy; <a href="https://carto.com/attribution/">CARTO</a>` },
+});
+// Offered once the key arrives, before "Nenhum".
+const CARTO_BASES = {
+  // Positron turns into its dark twin, Dark Matter, in dark mode.
+  positron: { label: 'Positron (limpo)', ...carto(() => (dark.matches ? 'dark_all' : 'light_all')) },
+  voyager: { label: 'Voyager', ...carto('rastertiles/voyager') },
+};
+const BASES = {
+  osm: { label: 'OpenStreetMap', url: () => OSM_URL, options: { className: 'osm-tiles', attribution: OSM_CREDIT } },
+  osmLight: { label: 'OpenStreetMap claro', url: () => OSM_URL, options: { className: 'osm-tiles light', attribution: OSM_CREDIT } },
+  none: { label: 'Nenhum', url: null },
+};
+const baseLayer = (key) => {
+  const b = BASES[key];
+  b.layer ??= b.url && L.tileLayer(b.url(), { maxZoom: 19, ...b.options });
+  return b.layer;
+};
+dark.addEventListener('change', () => CARTO_BASES.positron.layer?.setUrl(CARTO_BASES.positron.url()));
+const topoLayer = L.tileLayer('https://telhas.pedalhidrografi.co/rmsampa-v2/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  minNativeZoom: 8,
+  maxNativeZoom: 16,
+  bounds: [[-24.207, -47.461], [-22.918, -45.703]],
+  attribution: 'Topografia: <a href="https://amora.pedalhidrografi.co/">Pedal Hidrográfico</a>',
+});
 // On phones the relief starts off: two tile layers double the images to load and draw.
-const BASE_DEFAULTS = { osm: { on: true, opacity: 1 }, topo: { on: !matchMedia('(max-width: 640px)').matches, opacity: 0.2 } };
+const BASE_DEFAULTS = { base: 'osm', opacity: 1, topo: { on: !matchMedia('(max-width: 640px)').matches, opacity: 0.2 } };
 let baseState = structuredClone(BASE_DEFAULTS);
 try {
   const saved = JSON.parse(localStorage.getItem('baseMaps') ?? 'null');
-  if (saved) for (const key of Object.keys(baseState)) Object.assign(baseState[key], saved[key]);
+  if (saved?.osm) {
+    // Before 2026-11 the base maps were two stacked on/off layers: { osm, topo }.
+    baseState.base = saved.osm.on === false ? 'none' : 'osm';
+    baseState.opacity = Number(saved.osm.opacity) || 1;
+    Object.assign(baseState.topo, saved.topo);
+  } else if (saved) {
+    Object.assign(baseState, saved, { topo: { ...baseState.topo, ...saved.topo } });
+  }
+  if (!(baseState.base in BASES) && !(baseState.base in CARTO_BASES)) baseState.base = BASE_DEFAULTS.base;
 } catch {}
+// A saved CARTO choice waits for the key; OSM stands in meanwhile.
+const wantedBase = baseState.base;
 const rememberBases = () => { try { localStorage.setItem('baseMaps', JSON.stringify(baseState)); } catch {} };
-Object.keys(BASE_MAPS).forEach((key, i) => {
-  BASE_MAPS[key].setZIndex(i + 1).setOpacity(baseState[key].opacity);
-  if (baseState[key].on) BASE_MAPS[key].addTo(map);
-});
+function showBase(key) {
+  for (const b of Object.values(BASES)) b.layer?.remove();
+  baseState.base = key;
+  baseLayer(key)?.setZIndex(1).setOpacity(baseState.opacity).addTo(map);
+}
+showBase(wantedBase in BASES ? wantedBase : BASE_DEFAULTS.base);
+topoLayer.setZIndex(2).setOpacity(baseState.topo.opacity);
+if (baseState.topo.on) topoLayer.addTo(map);
 
 rotatingPane('tracks').style.zIndex = 405;
 // Wider click tolerance so the thin rails are easy to tap.
 const trackRenderer = L.canvas({ pane: 'tracks', tolerance: 6 });
 rotatingPane('busRoutes').style.zIndex = 410;
 const busRouteRenderer = L.canvas({ pane: 'busRoutes', tolerance: 4 });
-map.createPane('busStops').style.zIndex = 415;
+rotatingPane('lowFloor').style.zIndex = 412;
+const lowFloorRenderer = L.canvas({ pane: 'lowFloor', tolerance: 6 });
 map.createPane('parking').style.zIndex = 418;
 map.createPane('stations').style.zIndex = 420;
 
 const trackLayer = L.layerGroup();
 const stationLayer = L.layerGroup();
 const busRouteLayer = L.layerGroup();
-const busStopLayer = L.layerGroup();
 const busLayer = L.layerGroup();
+const lowFloorLayer = L.layerGroup();
 const bicicletarioLayer = L.layerGroup();
 const paracicloLayer = L.layerGroup();
 
-// Stations, stops and bike parking only appear when zoomed in, inside a group the
+// Stations and bike parking only appear when zoomed in, inside a group the
 // user can toggle. Bicicletários (few, big) show up before paraciclos (many, small).
 const stationGroup = L.layerGroup();
-const busStopGroup = L.layerGroup();
 const parkingGroup = L.layerGroup();
-const BUS_STOP_MIN_ZOOM = 14;
 const PARKING_MIN_ZOOM = 12;
 const ZOOMED_LAYERS = [
   [stationLayer, stationGroup, 12],
-  [busStopLayer, busStopGroup, BUS_STOP_MIN_ZOOM],
   [bicicletarioLayer, parkingGroup, PARKING_MIN_ZOOM],
   [paracicloLayer, parkingGroup, 14],
 ];
@@ -154,50 +214,72 @@ function updateZoomedLayers() {
 // Layer control entries: [storage key, label, layer].
 const TOGGLES = [
   ['rail', 'Metrô e trens', trackLayer],
-  ['stations', 'Estações', stationGroup],
+  ['stations', 'Estações e terminais', stationGroup],
   ['busRoutes', 'Itinerários de ônibus', busRouteLayer],
   ['buses', 'Ônibus ao vivo', busLayer],
-  ['busStops', 'Pontos de ônibus', busStopGroup],
   ['parking', 'Bicicletários e paraciclos', parkingGroup],
+  ['lowFloor', 'Ônibus de piso baixo (todas as linhas)', lowFloorLayer],
 ];
+// Layers that start off; the user's choice is kept in 'shownLayers' instead of 'hiddenLayers'.
+const OPT_IN = new Set(['lowFloor']);
 
-let hidden = [];
+let hidden = [], shown = [];
 try { hidden = JSON.parse(localStorage.getItem('hiddenLayers') ?? '[]'); } catch {}
-for (const [key, , layer] of TOGGLES) if (!hidden.includes(key)) layer.addTo(map);
+try { shown = JSON.parse(localStorage.getItem('shownLayers') ?? '[]'); } catch {}
+for (const [key, , layer] of TOGGLES) if (OPT_IN.has(key) ? shown.includes(key) : !hidden.includes(key)) layer.addTo(map);
 
 function rememberLayers() {
-  const off = TOGGLES.filter(([, , layer]) => !map.hasLayer(layer)).map(([key]) => key);
-  try { localStorage.setItem('hiddenLayers', JSON.stringify(off)); } catch {}
+  const off = TOGGLES.filter(([key, , layer]) => !OPT_IN.has(key) && !map.hasLayer(layer)).map(([key]) => key);
+  const on = TOGGLES.filter(([key, , layer]) => OPT_IN.has(key) && map.hasLayer(layer)).map(([key]) => key);
+  try { localStorage.setItem('hiddenLayers', JSON.stringify(off)); localStorage.setItem('shownLayers', JSON.stringify(on)); } catch {}
 }
 
-// The layers sheet (⧉): base map as radio buttons, overlays as switches. Adding a
-// layer fires 'overlayadd' like L.control.layers did, which lazy layers listen to.
+// The layers sheet (⧉): background map as radio buttons with one opacity slider, the
+// relief and the overlays as switches. Adding a layer fires 'overlayadd' like
+// L.control.layers did, which lazy layers listen to.
+const opacityRow = (key, value, label) => `<input type="range" min="0" max="100" step="5" value="${Math.round(value * 100)}" data-opacity="${key}" aria-label="Opacidade: ${label}">
+      <output>${Math.round(value * 100)}%</output>`;
 function buildLayerRows() {
-  // Top layer first, as it's drawn.
-  const bases = Object.entries(BASE_LABELS).reverse().map(([key, label]) => `
-    <li class="base-row"><label><input type="checkbox" data-base="${key}" ${baseState[key].on ? 'checked' : ''}><span>${label}</span></label>
-      <input type="range" min="0" max="100" step="5" value="${Math.round(baseState[key].opacity * 100)}" data-opacity="${key}" aria-label="Opacidade: ${label}">
-      <output>${Math.round(baseState[key].opacity * 100)}%</output></li>`);
+  const bases = Object.entries(BASES).map(([key, b]) => `
+    <li><label><input type="radio" name="base-map" value="${key}" ${baseState.base === key ? 'checked' : ''}><span>${b.label}</span></label></li>`);
   const overlays = TOGGLES.map(([key, label, layer]) => `
     <li><label><input type="checkbox" data-layer="${key}" ${map.hasLayer(layer) ? 'checked' : ''}><span>${label}</span></label></li>`);
-  $('#layer-rows').innerHTML = `<li class="layer-group">Mapa</li>${bases.join('')}<li class="layer-group">No mapa</li>${overlays.join('')}`;
+  $('#layer-rows').innerHTML = `<li class="layer-group">Mapa de fundo</li>${bases.join('')}
+    <li class="base-row opacity-only">${opacityRow('base', baseState.opacity, 'mapa de fundo')}</li>
+    <li class="base-row"><label><input type="checkbox" data-topo ${baseState.topo.on ? 'checked' : ''}><span>Topográfico colorido (por cima)</span></label>
+      ${opacityRow('topo', baseState.topo.opacity, 'topográfico')}</li>
+    <li class="layer-group">No mapa</li>${overlays.join('')}`;
 }
 buildLayerRows();
+getJson('api/config').then(({ cartoKey: key }) => {
+  if (!key) return;
+  cartoKey = key;
+  const none = BASES.none;
+  delete BASES.none;
+  Object.assign(BASES, CARTO_BASES, { none });
+  if (wantedBase in CARTO_BASES && baseState.base !== wantedBase) showBase(wantedBase);
+  buildLayerRows();
+}).catch(() => {}); // offline or no function: OSM only
 $('#layer-rows').addEventListener('input', (e) => {
   const key = e.target.dataset.opacity;
   if (!key) return;
-  baseState[key].opacity = Number(e.target.value) / 100;
-  BASE_MAPS[key].setOpacity(baseState[key].opacity);
+  const value = Number(e.target.value) / 100;
+  if (key === 'base') { baseState.opacity = value; baseLayer(baseState.base)?.setOpacity(value); }
+  else { baseState.topo.opacity = value; topoLayer.setOpacity(value); }
   e.target.nextElementSibling.textContent = `${e.target.value}%`;
   rememberBases();
 });
 $('#layer-rows').addEventListener('change', (e) => {
   const input = e.target;
-  if (input.dataset.base) {
-    const key = input.dataset.base;
-    baseState[key].on = input.checked;
-    if (input.checked) BASE_MAPS[key].addTo(map);
-    else BASE_MAPS[key].remove();
+  if (input.name === 'base-map') {
+    showBase(input.value);
+    rememberBases();
+    return;
+  }
+  if ('topo' in input.dataset) {
+    baseState.topo.on = input.checked;
+    if (input.checked) topoLayer.addTo(map);
+    else topoLayer.remove();
     rememberBases();
     return;
   }
@@ -237,6 +319,7 @@ async function getJson(url) {
 const railGeoPromise = getJson('data/rail.geojson').catch(() => ({ features: [] }));
 const busGeoPromise = getJson('data/bus-routes.geojson').catch(() => ({ features: [] }));
 const emtuGeoPromise = getJson('data/emtu-routes.geojson').catch(() => ({ features: [] }));
+const terminalGeoPromise = getJson('data/bus-terminals.geojson').catch(() => ({ features: [] }));
 const [railConfig, busConfig, emtuConfig] = await Promise.all([
   getJson('data/rail-lines.json'),
   getJson('data/bike-buses.json'),
@@ -276,7 +359,11 @@ function railStatus(line, date = new Date()) {
   return lineStatus(line, railConfig.bikeRules.bikes, state.live[line.ref], date);
 }
 
-const lines = railConfig.lines.map((line) => ({ ...line, tracks: [], bounds: null }));
+const lines = railConfig.lines.map((line) => ({ ...line, tracks: [], casings: [], bounds: null }));
+// Rails get a dark casing under the status-coloured core, the railway symbol of road
+// maps, so they don't look like the (uncased) bus lines. The core keeps its dashes for
+// the bike status.
+const RAIL_CASING = MAP.rail.casing;
 const lineByRef = new Map(lines.map((l) => [l.ref, l]));
 
 function addRailGeometry(railGeo) {
@@ -285,8 +372,9 @@ function addRailGeometry(railGeo) {
       const line = lineByRef.get(f.properties.ref);
       if (!line) continue;
       const latlngs = f.geometry.coordinates.map((part) => part.map(([lon, lat]) => [lat, lon]));
-      // Thin continuous line in the bike status colour (set in renderRail).
-      const track = L.polyline(latlngs, { renderer: trackRenderer, weight: 2.5, opacity: railOpacity(line), lineCap: 'round', bubblingMouseEvents: false });
+      line.casings.push(L.polyline(latlngs, { renderer: trackRenderer, weight: 6, color: RAIL_CASING, opacity: railOpacity(line), lineCap: 'round', interactive: false }).addTo(trackLayer));
+      // Thin line in the bike status colour (set in renderRail), over the casing.
+      const track = L.polyline(latlngs, { renderer: trackRenderer, weight: 3, opacity: railOpacity(line), lineCap: 'round', bubblingMouseEvents: false });
       track.on('click', (e) => L.popup().setLatLng(e.latlng).setContent(linePopup(line)).openOn(map));
       trackLayer.addLayer(track);
       line.tracks.push(track);
@@ -301,6 +389,9 @@ function addRailGeometry(railGeo) {
         .addTo(stationLayer);
     }
   }
+  // Every core above every casing: a neighbouring line's casing mustn't hide the
+  // status dashes where tracks run side by side or cross.
+  for (const line of lines) for (const t of line.tracks) t.bringToFront();
   renderRail();
 }
 
@@ -339,6 +430,25 @@ function renderRail() {
     </li>`;
   });
   $('#rail-list').innerHTML = items.join('');
+  renderLiveChip();
+}
+
+/** The chip on the map: rail lines open to bikes now, live rack buses, live EMTU coaches. */
+function renderLiveChip() {
+  const el = liveChip.getContainer();
+  if (!el) return;
+  const now = new Date();
+  const railOk = lines.filter((l) => railStatus(l, now).status === 'ok').length;
+  // Short on screen; spelled out for screen readers.
+  const parts = [['train', `${railOk}/${lines.length} linhas liberadas`, `${railOk} de ${lines.length} linhas de metrô e trem com bici liberada agora`]];
+  if (state.busesLoaded) {
+    const sptrans = state.buses.filter((b) => !isEmtu(b)).length;
+    const emtu = state.buses.filter(isEmtu).length;
+    parts.push(state.busError ? ['bus', 'sem posições', 'ônibus sem posições ao vivo'] : ['bus', `${sptrans} com suporte ao vivo`, `${sptrans} ônibus com suporte para bici ao vivo`]);
+    if (!state.emtuError) parts.push(['bus', `${emtu} seletivos EMTU`, `${emtu} seletivos EMTU ao vivo`]);
+  }
+  el.innerHTML = parts.map(([glyph, short]) => `<span>${icon(glyph, 'icon-sm')}${esc(short)}</span>`).join('');
+  el.setAttribute('aria-label', `${parts.map(([, , long]) => long).join(', ')}. Abrir a lista de linhas`);
 }
 
 $('#rail-list').addEventListener('click', (e) => {
@@ -355,6 +465,51 @@ async function refreshLive() {
     console.warn('rail status unavailable', err);
   }
   renderRail();
+}
+
+// ---------------------------------------------------------------- bus terminals
+
+// SPTrans, EMTU and coach terminals (GeoSampa): a bus under a roof on a square in the
+// operator's colour, with the stations (same toggle, same zoom). Few, so not culled.
+const TERMINAL_KINDS = {
+  sptrans: { color: MAP.terminal.sptrans, label: 'Terminal de ônibus SPTrans' },
+  emtu: { color: MAP.terminal.emtu, label: 'Terminal metropolitano (EMTU)' },
+  rodoviario: { color: MAP.terminal.coach, label: 'Terminal rodoviário' },
+};
+const terminalIcons = {};
+function terminalIcon(kind) {
+  terminalIcons[kind] ??= L.divIcon({
+    className: 'terminal-icon',
+    html: `<svg viewBox="0 0 22 22" width="22" height="22" aria-hidden="true">
+      <rect x="1" y="1" width="20" height="20" rx="4" fill="${TERMINAL_KINDS[kind].color}" stroke="${MAP.icon.on}" stroke-width="1.5"/>
+      <path d="M4.5 7.2 11 4l6.5 3.2" fill="none" stroke="${MAP.icon.on}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="6.5" y="8.6" width="9" height="8.4" rx="1.6" fill="${MAP.icon.on}"/>
+      <rect x="7.7" y="9.8" width="6.6" height="3.2" rx=".5" fill="${TERMINAL_KINDS[kind].color}"/>
+      <circle cx="8.6" cy="15" r=".9" fill="${TERMINAL_KINDS[kind].color}"/><circle cx="13.4" cy="15" r=".9" fill="${TERMINAL_KINDS[kind].color}"/>
+    </svg>`,
+    iconSize: [34, 34], // tap target around the 22 px symbol
+    iconAnchor: [17, 17],
+  });
+  return terminalIcons[kind];
+}
+
+function terminalPopup(t) {
+  const lot = t.parking;
+  return `<h3>${esc(t.name)}</h3>
+    <p class="first meta">${TERMINAL_KINDS[t.kind].label}${t.address ? ` · ${esc(t.address)}` : ''}</p>
+    ${lot ? `<p><span class="dot inline" style="background:${PARKING_COLORS[lot.access] ?? PARKING_COLORS.cadastro}"></span> <b>${esc(lot.name)}</b> a ${lot.meters} m<br>${esc(ACCESS[lot.access]?.detail ?? '')}</p>` : ''}
+    <p class="meta source">Fonte: GeoSampa (Prefeitura de SP)</p>`;
+}
+
+function addTerminals(geo) {
+  for (const { properties: t, geometry } of geo.features) {
+    if (!TERMINAL_KINDS[t.kind]) continue;
+    const [lon, lat] = geometry.coordinates;
+    L.marker([lat, lon], { pane: 'stations', icon: terminalIcon(t.kind), keyboard: false })
+      .bindTooltip(esc(t.name), { direction: 'top', offset: [0, -10] })
+      .bindPopup(() => terminalPopup(t))
+      .addTo(stationLayer);
+  }
 }
 
 // ---------------------------------------------------------------- buses
@@ -421,7 +576,7 @@ function addBusRoutes(busGeo) {
 }
 
 /**
- * Fetches and draws the route and stops of an unusual line (once): from the
+ * Fetches and draws the route of an unusual line (once): from the
  * per-line GTFS file, else from GeoSampa (routes only) for lines missing there.
  */
 async function loadUnusualRoute(line) {
@@ -431,8 +586,6 @@ async function loadUnusualRoute(line) {
       if (!busLineByCode.has(line.code)) return; // dropped while loading
       if (data.name) line.name = data.name;
       for (const d of data.directions ?? []) addRoute(line, d.sentido, d.coordinates, 0, d.headsign);
-      addStops((data.stops ?? []).map((st) => ({ ...st, lines: [line.code] })));
-      line.stopIds = (data.stops ?? []).map((st) => st.id);
     })
     .catch((err) => console.warn(`route ${line.code} unavailable`, err));
   return line.routeRequested;
@@ -440,90 +593,7 @@ async function loadUnusualRoute(line) {
 
 function dropUnusualLine(line) {
   for (const r of line.routes) busRouteLayer.removeLayer(r);
-  removeStopsOfLine(line.code, line.stopIds ?? []);
   busLineByCode.delete(line.code);
-}
-
-// Bus stop: a bus seen from the front.
-const busStopIcon = L.divIcon({
-  className: 'bus-stop-icon',
-  html: `<svg viewBox="0 0 14 16" width="14" height="16" aria-hidden="true">
-    <rect x="1" y="0.8" width="12" height="12.4" rx="2.2" fill="${MAP.stop.body}" stroke="${MAP.icon.on}" stroke-width="1"/>
-    <rect x="2.8" y="2.6" width="8.4" height="5" rx=".8" fill="${MAP.icon.on}"/>
-    <circle cx="3.9" cy="10.3" r="1" fill="${MAP.stop.lights}"/><circle cx="10.1" cy="10.3" r="1" fill="${MAP.stop.lights}"/>
-    <rect x="2.2" y="12.6" width="2.4" height="2.8" rx=".7" fill="${MAP.stop.body}" stroke="${MAP.icon.on}" stroke-width=".8"/>
-    <rect x="9.4" y="12.6" width="2.4" height="2.8" rx=".7" fill="${MAP.stop.body}" stroke="${MAP.icon.on}" stroke-width=".8"/>
-  </svg>`,
-  iconSize: [32, 32], // tap target around the 14×16 icon
-  iconAnchor: [16, 16],
-});
-
-// Thousands of stops: those of the expected lines are downloaded the first time
-// someone zooms in with the layer on; unusual lines add theirs as they load. Only
-// the stops in view are on the map.
-const stopIndex = new Map(); // stop id -> { marker, name, lines: Set }
-let expectedStopsLoading = null;
-
-function addStops(stops) {
-  for (const { id, name, coordinates, lines } of stops) {
-    const known = stopIndex.get(id);
-    if (known) {
-      lines.forEach((c) => known.lines.add(c));
-      continue;
-    }
-    const [lon, lat] = coordinates;
-    const entry = { name, lines: new Set(lines) };
-    entry.marker = L.marker([lat, lon], { pane: 'busStops', icon: busStopIcon, keyboard: false })
-      .bindTooltip(esc(name), { direction: 'top', offset: [0, -8] })
-      .bindPopup(() => busStopPopup(entry));
-    stopIndex.set(id, entry);
-  }
-  showStopsInView();
-}
-
-function removeStopsOfLine(code, ids) {
-  for (const id of ids) {
-    const entry = stopIndex.get(id);
-    if (!entry) continue;
-    entry.lines.delete(code);
-    if (!entry.lines.size) {
-      busStopLayer.removeLayer(entry.marker);
-      stopIndex.delete(id);
-    }
-  }
-}
-
-function loadExpectedStops() {
-  expectedStopsLoading ??= Promise.all(['data/bus-stops.geojson', 'data/emtu-stops.geojson'].map((url) => getJson(url)
-    .then((geo) => addStops(geo.features.map((f) => ({ ...f.properties, coordinates: f.geometry.coordinates }))))
-    .catch((err) => console.warn(`${url} unavailable`, err))));
-}
-
-function showStopsInView() {
-  if (!map.hasLayer(busStopGroup) || map.getZoom() < BUS_STOP_MIN_ZOOM) return;
-  loadExpectedStops();
-  const view = map.getBounds().pad(0.25);
-  for (const { marker } of stopIndex.values()) {
-    const inView = view.contains(marker.getLatLng());
-    if (inView && !busStopLayer.hasLayer(marker)) busStopLayer.addLayer(marker);
-    else if (!inView && busStopLayer.hasLayer(marker)) busStopLayer.removeLayer(marker);
-  }
-}
-map.on('moveend overlayadd', showStopsInView);
-
-function busStopPopup({ name, lines }) {
-  const s = bikeStatus({ bikes: busConfig.rules.bikes });
-  const codes = [...lines].sort();
-  const rows = codes.map((code) => {
-    const line = busLineByCode.get(code);
-    const n = state.buses.filter((b) => b.line === code).length;
-    return `<p class="row">${busBadge(code)} ${esc(line?.name ?? '')}${n ? ` · ${n} ${isEmtu(line) ? 'ao vivo' : 'com suporte agora'}` : ''}</p>`;
-  });
-  const emtu = codes.some((c) => isEmtu(busLineByCode.get(c)));
-  const sptrans = codes.some((c) => !isEmtu(busLineByCode.get(c)));
-  return `<h3>Ponto: ${esc(name)}</h3>${rows.join('')}
-    ${sptrans ? `<p><span class="dot inline ${s.status}"></span> ${esc(s.detail)}</p>` : ''}
-    ${emtu ? `<p>${esc(emtuConfig.rules.summary)}</p>` : ''}`;
 }
 
 function busBadge(code) {
@@ -576,6 +646,14 @@ function busHeading(bus) {
 }
 
 const busMarkers = new Map(); // busId -> marker
+let tappedBus = null; // busId of the bus whose popup is open: drawn bigger, on top
+
+/** Marks the tapped bus's marker (if it's on the map); the others lose the mark. */
+function markTapped(marker, id) {
+  const on = id === tappedBus;
+  marker.getElement()?.classList.toggle('tapped', on);
+  marker.setZIndexOffset(on ? 1000 : 0);
+}
 
 const fare = (n) => `R$ ${n.toFixed(2).replace('.', ',')}`;
 
@@ -651,6 +729,7 @@ function renderBuses() {
   $('#emtu-count').textContent = state.busesLoaded && !state.emtuError ? `· ${emtuLive} ao vivo` : '';
   $('#emtu-status').innerHTML = esc(emtuConfig.rules.summary) + (state.emtuError ? '<br><b>Sem posições ao vivo agora</b>' : '');
   $('#emtu-list').innerHTML = emtu.map((c) => lineItem(c, counts.get(c))).join('');
+  renderLiveChip();
 }
 
 // Only the buses in view get a marker (hundreds of DOM icons make panning and zooming
@@ -696,6 +775,7 @@ function syncBusMarkers() {
       }
       if (marker.options.icon !== icon) marker.setIcon(icon);
       marker.setOpacity(busOpacity(bus.line));
+      markTapped(marker, id);
       const svg = marker.getElement()?.querySelector('.bus-icon');
       if (svg) {
         const heading = busHeadings.get(id);
@@ -752,6 +832,65 @@ async function refreshBuses() {
   state.busesLoaded = true;
   renderBuses();
 }
+
+// ---------------------------------------------------------------- low-floor buses
+
+// Every SPTrans low-floor bus (step-free boarding) on the road, whatever its line, from
+// the SPTrans fleet register: a first look at where they run. Thousands of them, so they
+// are small canvas dots, fetched only while the layer is on and zoomed in, and only the
+// ones in view are drawn.
+const LOW_FLOOR_MIN_ZOOM = 12;
+const LOW_FLOOR_COLOR = MAP.bus.lowFloor;
+const DOOR_LABEL = { D: 'porta dianteira', C: 'porta central', T: 'porta traseira' };
+let lowFloor = null; // last /api/low-floor reply
+let lowFloorAt = 0;
+let lowFloorBusy = false;
+const lowFloorWanted = () => map.hasLayer(lowFloorLayer) && map.getZoom() >= LOW_FLOOR_MIN_ZOOM;
+
+async function refreshLowFloor() {
+  if (!lowFloorWanted() || lowFloorBusy || document.hidden) return;
+  lowFloorBusy = true;
+  try {
+    const reply = await getJson('api/low-floor');
+    if (reply.error) throw new Error(reply.error);
+    lowFloor = reply;
+    lowFloorAt = Date.now();
+  } catch (err) {
+    console.warn('low-floor buses unavailable', err);
+    if (!lowFloor) toast('Ônibus de piso baixo: sem posições agora');
+  } finally {
+    lowFloorBusy = false;
+  }
+  drawLowFloor();
+}
+
+function lowFloorPopup([prefix, line, sentido, , , door]) {
+  const to = lowFloor?.to?.[`${line}|${sentido}`];
+  const date = lowFloor?.register?.split('-').reverse().join('/');
+  return `<h3>${icon('accessible', 'icon-sm')} Ônibus ${esc(prefix)}</h3>
+    <p class="first"><span class="badge" style="background:${LOW_FLOOR_COLOR}">${esc(line)}</span>${to ? ` → ${esc(to)}` : ''}</p>
+    <p><b>Piso baixo</b>: embarque sem degrau pela ${DOOR_LABEL[door] ?? 'porta indicada'}</p>
+    <p class="meta source">Fonte: cadastro da frota SPTrans${date ? ` (${date})` : ''} e Olho Vivo</p>`;
+}
+
+function drawLowFloor() {
+  lowFloorLayer.clearLayers();
+  if (!lowFloor || !lowFloorWanted()) return;
+  const view = map.getBounds().pad(0.2);
+  for (const row of lowFloor.vehicles) {
+    const [, line, , lat, lon] = row;
+    if (!view.contains([lat, lon])) continue;
+    L.circleMarker([lat, lon], {
+      renderer: lowFloorRenderer, radius: 4.5, weight: 1.5, color: MAP.icon.on, fillColor: LOW_FLOOR_COLOR, fillOpacity: 1,
+      opacity: busOpacity(line), bubblingMouseEvents: false,
+    }).bindPopup(() => lowFloorPopup(row)).addTo(lowFloorLayer);
+  }
+}
+map.on('moveend overlayadd', () => {
+  if (!lowFloorWanted()) return lowFloorLayer.clearLayers();
+  if (Date.now() - lowFloorAt > BUS_REFRESH_MS) refreshLowFloor();
+  else drawLowFloor();
+});
 
 // ---------------------------------------------------------------- bike parking
 
@@ -824,7 +963,7 @@ function loadParking() {
 }
 map.on('zoomend overlayadd', loadParking);
 
-// Like bus stops, only the parking spots in view are on the map.
+// Like the live buses, only the parking spots in view are on the map.
 function showParkingInView() {
   if (!parkingMarkers.length || map.getZoom() < PARKING_MIN_ZOOM) return;
   const view = map.getBounds().pad(0.25);
@@ -857,14 +996,16 @@ function renderClock() {
 }
 
 initSheets();
+initTabs(document.querySelector('#layers-panel .tabs'));
 initUpdates();
 const locate = initLocate(map);
 
 function applyFocus() {
   focus = busFocus ?? planFocus;
-  for (const line of lines) for (const t of line.tracks) t.setStyle({ opacity: railOpacity(line) });
+  for (const line of lines) for (const t of [...line.casings, ...line.tracks]) t.setStyle({ opacity: railOpacity(line) });
   for (const line of busLineByCode.values()) for (const r of line.routes) r.setStyle({ opacity: busOpacity(line.code) });
   for (const bus of state.buses) busMarkers.get(busId(bus))?.setOpacity(busOpacity(bus.line));
+  drawLowFloor();
 }
 
 /** Planner: fade what a planned trip doesn't use (null = nothing planned). */
@@ -876,6 +1017,8 @@ function focusLines(used) {
 /** Highlights the route of `bus` (its direction) and fades the other bus lines; null undoes it. */
 function highlightBus(bus) {
   const line = bus && busLineByCode.get(bus.line);
+  tappedBus = bus ? busId(bus) : null;
+  for (const [id, marker] of busMarkers) markTapped(marker, id);
   highlighted = line ? { code: line.code, sentido: line.routes.some((r) => r.sentido === bus.sentido) ? bus.sentido : null } : null;
   busFocus = line ? { buses: new Set([line.code]), rails: planFocus?.rails ?? null } : null;
   applyFocus();
@@ -915,6 +1058,7 @@ loadParking();
 refreshLive();
 refreshBuses();
 railGeoPromise.then(addRailGeometry);
+terminalGeoPromise.then(addTerminals);
 busGeoPromise.then((geo) => {
   addBusRoutes(geo);
   renderBuses();
@@ -926,3 +1070,5 @@ emtuGeoPromise.then((geo) => {
 setInterval(() => { renderClock(); renderRail(); renderParking(); }, CLOCK_REFRESH_MS);
 setInterval(refreshLive, RAIL_REFRESH_MS);
 setInterval(refreshBuses, BUS_REFRESH_MS);
+setInterval(refreshLowFloor, BUS_REFRESH_MS);
+refreshLowFloor();

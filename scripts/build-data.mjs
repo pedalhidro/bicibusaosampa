@@ -13,8 +13,10 @@
 //   public/data/routing/streets.bin  street graph for the trip planner, from OSM and amora's
 //                                    elevations (only on request: `streets`, ~30 Overpass calls)
 //   data/bike-fleet.json            SPTrans buses with a bike rack, from the fleet CSV in assets/
+//   public/data/bus-terminals.geojson bus terminals (SPTrans, EMTU, coach stations), from GeoSampa
+//   data/low-floor-fleet.json       SPTrans low-floor buses, from the fleet register in assets/
 //
-// Usage: node scripts/build-data.mjs [rail|bus|emtu|parking|routing|streets|fleet]   (default: all but streets)
+// Usage: node scripts/build-data.mjs [rail|bus|emtu|parking|terminals|routing|streets|fleet]   (default: all but streets)
 // Downloads are cached in .cache/ for a day; delete it to force a refresh.
 
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -29,11 +31,16 @@ import { emtuFeatures, emtuGet, emtuGtfs, toCsv } from './emtu.mjs';
 import { assignLanes } from './lanes.mjs';
 import { buildParking } from './parking.mjs';
 import { buildTransit } from './routing.mjs';
+import { buildTerminals } from './terminals.mjs';
 import { buildStreets, phvgElevation } from './streets.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'public', 'data');
 const FLEET_CSV = join(ROOT, 'assets', '00_businfo_consolidado.csv');
+// SPTrans "Frota cadastrada" register (XLSX saved as CSV), with each bus's accessibility.
+const REGISTER_CSV = join(ROOT, 'assets', 'sptrans-frota-cadastrada-2026-04-10.csv');
+const REGISTER_DATE = '2026-04-10';
+const LOW_FLOOR_JSON = join(ROOT, 'data', 'low-floor-fleet.json');
 const FLEET_JSON = join(ROOT, 'data', 'bike-fleet.json');
 const EMTU_GTFS = join(ROOT, 'public', 'data', 'gtfs', 'emtu-seletivo.zip');
 // Vehicle types with a bike rack: the 23 m superarticulated buses ("Articulado 23m").
@@ -357,6 +364,25 @@ async function buildParkingLayer() {
   console.log(`  wrote bike-parking.geojson: ${features.length} spots ${count('kind')} ${count('access')}`);
 }
 
+// ---------------------------------------------------------------- bus terminals (GeoSampa)
+
+async function buildTerminalLayer() {
+  console.log('Terminals: fetching GeoSampa');
+  const wfs = new URL(GEOSAMPA_WFS);
+  wfs.search = new URLSearchParams({
+    service: 'WFS', version: '2.0.0', request: 'GetFeature', typeNames: 'geoportal:terminal_onibus',
+    outputFormat: 'application/json', srsName: 'EPSG:4326',
+  });
+  const geo = JSON.parse((await cached('geosampa-terminals.json', () => firstOk([wfs.href]))).toString('utf8'));
+  let parking = [];
+  try { parking = JSON.parse(await readFile(join(DATA, 'bike-parking.geojson'), 'utf8')).features; } catch {}
+  const features = buildTerminals(geo.features ?? [], parking);
+  if (features.length < 30) throw new Error(`only ${features.length} terminals, GeoSampa looks broken`);
+  await writeFile(join(DATA, 'bus-terminals.geojson'), JSON.stringify({ type: 'FeatureCollection', features }));
+  const kinds = JSON.stringify(Object.groupBy(features, (f) => f.properties.kind), (k, v) => (Array.isArray(v) ? v.length : v));
+  console.log(`  wrote bus-terminals.geojson: ${features.length} terminals ${kinds}, ${features.filter((f) => f.properties.parking).length} with a bicicletário`);
+}
+
 // ---------------------------------------------------------------- routing (GTFS)
 
 async function buildRouting() {
@@ -374,8 +400,10 @@ async function buildRouting() {
     console.warn(`  ${EMTU_GTFS} not found, building without the EMTU seletivo lines`);
   }
   const table = (name) => [files, emtu].flatMap((f) => (f[name] ? parseCsv(strFromU8(f[name])) : []));
+  // EMTU routes are marked, so the planner can leave the intercity lines out.
+  const emtuRoutes = new Set((emtu['routes.txt'] ? parseCsv(strFromU8(emtu['routes.txt'])) : []).map((r) => r.route_id));
   const network = buildTransit({
-    routes: table('routes.txt'),
+    routes: table('routes.txt').map((r) => (emtuRoutes.has(r.route_id) ? { ...r, feed: 'emtu' } : r)),
     trips: table('trips.txt'),
     stops: table('stops.txt'),
     stopTimes: table('stop_times.txt'),
@@ -454,30 +482,89 @@ async function buildStreetsLayer() {
 
 // ---------------------------------------------------------------- fleet (CSV)
 
+// The bike-rack fleet comes from two SPTrans registers, both in assets/ (gitignored):
+// - REGISTER_CSV ("Frota cadastrada", 2026-04-10): "Articulado (23m)" and plain
+//   "Articulado" count as superarticulated (the maintainer's call, 2026-11).
+// - FLEET_CSV (businfo, older): its `tipo` A23 adds buses missing from the register,
+//   and A18/A21 removes plain "Articulado" buses that it knows are shorter (about 630:
+//   no rack).
+// Electric buses (no rack) are left out whichever file says so.
+const REGISTER_BIKE_TYPES = new Set(['Articulado (23m)', 'Articulado']);
 async function buildFleet() {
-  let text;
-  try {
-    text = await readFile(FLEET_CSV, 'utf8');
-  } catch {
-    console.log(`Fleet: ${FLEET_CSV} not found, keeping data/bike-fleet.json`);
+  const read = (file) => readFile(file, 'utf8').catch(() => null);
+  const [businfo, register] = await Promise.all([read(FLEET_CSV), read(REGISTER_CSV)]);
+  if (!businfo && !register) {
+    console.log(`Fleet: neither ${FLEET_CSV} nor ${REGISTER_CSV} found, keeping data/bike-fleet.json`);
     return;
   }
-  console.log('Fleet: reading the SPTrans fleet CSV');
-  const [header, ...rows] = text.split(/\r?\n/).filter(Boolean).map((l) => l.split(';'));
-  const col = Object.fromEntries(header.map((h, i) => [h.trim(), i]));
-  const prefixes = new Set();
-  for (const r of rows) {
-    if (r[col.cidade] === 'SP' && BIKE_TYPES.has(r[col.tipo])) prefixes.add(r[col.prefixo]);
+  console.log(`Fleet: reading ${[businfo && 'the businfo CSV', register && 'the fleet register'].filter(Boolean).join(' and ')}`);
+  const prefixes = new Set(), shorter = new Set(), electric = new Set();
+  if (businfo) {
+    const [header, ...rows] = businfo.split(/\r?\n/).filter(Boolean).map((l) => l.split(';'));
+    const col = Object.fromEntries(header.map((h, i) => [h.trim(), i]));
+    for (const r of rows) {
+      if (r[col.cidade] !== 'SP') continue;
+      const tipo = r[col.tipo], prefix = r[col.prefixo];
+      if (BIKE_TYPES.has(tipo)) prefixes.add(prefix);
+      else if (/^A(18|21)$/.test(tipo)) shorter.add(prefix);
+      if (/^e/.test(tipo)) electric.add(prefix);
+    }
   }
+  if (register) {
+    for (const r of parseCsv(register)) {
+      const prefix = r.Prefixo?.trim(), tech = (r.Tecnologia ?? '').replace(/\s+/g, ' ').trim();
+      if (!prefix) continue;
+      if (/^e/.test(tech) || /el[ée]trico/i.test(r['Combustível'] ?? '')) electric.add(prefix);
+      if (REGISTER_BIKE_TYPES.has(tech) && !shorter.has(prefix)) prefixes.add(prefix);
+    }
+  }
+  for (const p of electric) prefixes.delete(p);
   const sorted = [...prefixes].sort((a, b) => a.localeCompare(b));
+  if (sorted.length < 500) throw new Error(`only ${sorted.length} bike-rack buses, the fleet files look broken`);
   await mkdir(dirname(FLEET_JSON), { recursive: true });
   await writeFile(FLEET_JSON, `${JSON.stringify({
-    _comment: 'Gerado por scripts/build-data.mjs a partir do cadastro da frota (assets/00_businfo_consolidado.csv, fora do git): prefixos dos ônibus SPTrans "Articulado 23m" (superarticulados com suporte para bicicleta).',
-    types: [...BIKE_TYPES],
+    _comment: `Gerado por scripts/build-data.mjs a partir dos cadastros da frota da SPTrans (assets/, fora do git): ônibus "Articulado (23m)" e "Articulado" do cadastro "Frota cadastrada" de ${REGISTER_DATE}, mais os "Articulado 23m" (A23) do businfo; sem os que o businfo diz ter 18 ou 21 m e sem os elétricos (sem suporte para bicicleta).`,
+    types: [...REGISTER_BIKE_TYPES, ...BIKE_TYPES],
     count: sorted.length,
     prefixes: sorted,
   })}\n`);
-  console.log(`  wrote data/bike-fleet.json: ${sorted.length} vehicles`);
+  console.log(`  wrote data/bike-fleet.json: ${sorted.length} vehicles (${shorter.size} known 18/21 m and ${electric.size} electric left out)`);
+}
+
+// Low-floor buses (step-free boarding, the "Piso Baixo" ones; the others have a lift),
+// by the door with the low entrance: D(ianteira), C(entral), T(raseira).
+async function buildLowFloor() {
+  let text;
+  try {
+    text = await readFile(REGISTER_CSV, 'utf8');
+  } catch {
+    console.log(`Low floor: ${REGISTER_CSV} not found, keeping data/low-floor-fleet.json`);
+    return;
+  }
+  console.log('Low floor: reading the SPTrans fleet register');
+  const DOOR = { dianteiro: 'D', central: 'C', traseiro: 'T' };
+  const doors = { D: [], C: [], T: [] };
+  let total = 0;
+  for (const r of parseCsv(text)) {
+    const prefix = r.Prefixo?.trim();
+    if (!prefix) continue;
+    total++;
+    const m = /^Piso Baixo\s*-\s*(\w+)/i.exec(r.Acessibilidade?.trim() ?? '');
+    const door = m && DOOR[m[1].toLowerCase()];
+    if (door) doors[door].push(prefix);
+  }
+  for (const list of Object.values(doors)) list.sort((a, b) => a.localeCompare(b));
+  const count = doors.D.length + doors.C.length + doors.T.length;
+  if (count < 1000) throw new Error(`only ${count} low-floor buses in the register, the CSV looks broken`);
+  await mkdir(dirname(LOW_FLOOR_JSON), { recursive: true });
+  await writeFile(LOW_FLOOR_JSON, `${JSON.stringify({
+    _comment: `Gerado por scripts/build-data.mjs a partir do cadastro "Frota cadastrada" da SPTrans de ${REGISTER_DATE} (assets/, fora do git): prefixos dos ônibus de piso baixo, pela porta de embarque em nível (D = dianteira, C = central, T = traseira). Os demais ônibus da frota são de piso alto com elevador.`,
+    date: REGISTER_DATE,
+    fleet: total,
+    count,
+    doors,
+  })}\n`);
+  console.log(`  wrote data/low-floor-fleet.json: ${count} of ${total} vehicles`);
 }
 
 // A failed download keeps the previously committed file, so a flaky upstream
@@ -496,6 +583,8 @@ if (!which || which === 'rail') await run('rail', buildRail);
 if (!which || which === 'bus') await run('bus', buildBus);
 if (!which || which === 'emtu') await run('emtu', buildEmtu);
 if (!which || which === 'parking') await run('parking', buildParkingLayer);
+if (!which || which === 'terminals') await run('terminals', buildTerminalLayer);
 if (!which || which === 'routing') await run('routing', buildRouting);
 if (which === 'streets') await run('streets', buildStreetsLayer);
 if (!which || which === 'fleet') await run('fleet', buildFleet);
+if (!which || which === 'fleet') await run('low floor', buildLowFloor);

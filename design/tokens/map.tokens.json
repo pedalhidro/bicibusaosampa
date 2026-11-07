@@ -8,7 +8,10 @@
         "$description": "Bici liberada agora.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -17,8 +20,13 @@
         "$description": "A linha opera, mas está fora do horário da bici. Sempre com tracejado, para não depender só da cor.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"],
-            "avoid": ["linha contínua: fora do horário é sempre tracejado"]
+            "usage": [
+              "line",
+              "fill"
+            ],
+            "avoid": [
+              "linha contínua: fora do horário é sempre tracejado"
+            ]
           }
         }
       },
@@ -27,12 +35,32 @@
         "$description": "Linha fechada ou paralisada. Sempre com pontilhado.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"],
-            "avoid": ["linha contínua: fechado é sempre pontilhado"]
+            "usage": [
+              "line",
+              "fill"
+            ],
+            "avoid": [
+              "linha contínua: fechado é sempre pontilhado"
+            ]
           }
         }
       },
       "$type": "color"
+    },
+    "rail": {
+      "$type": "color",
+      "casing": {
+        "$value": "{ref.color.stone.900}",
+        "$description": "Contorno escuro sob cada linha de metrô e trem, o símbolo de ferrovia: separa os trilhos dos itinerários de ônibus. Sempre contínuo; o tracejado do status fica na linha de cima.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "line",
+              "background"
+            ]
+          }
+        }
+      }
     },
     "bus": {
       "$description": "Ônibus SPTrans: duas perguntas numa cor. A bici pode subir agora (Portaria SMT 32/2016)? E este é um superarticulado na linha habitual?",
@@ -42,7 +70,11 @@
           "$description": "Linha habitual, bici liberada.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["fill", "line", "background"]
+              "usage": [
+                "fill",
+                "line",
+                "background"
+              ]
             }
           }
         },
@@ -51,7 +83,11 @@
           "$description": "Linha habitual, fora do horário da bici. Contorno tracejado.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["fill", "line", "background"]
+              "usage": [
+                "fill",
+                "line",
+                "background"
+              ]
             }
           }
         }
@@ -62,7 +98,11 @@
           "$description": "Superarticulado fora das linhas habituais, bici liberada.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["fill", "line", "background"]
+              "usage": [
+                "fill",
+                "line",
+                "background"
+              ]
             }
           }
         },
@@ -71,7 +111,11 @@
           "$description": "Fora das linhas habituais e fora do horário da bici. Contorno tracejado.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["fill", "line", "background"]
+              "usage": [
+                "fill",
+                "line",
+                "background"
+              ]
             }
           }
         }
@@ -81,11 +125,30 @@
         "$description": "Seletivo EMTU (bici no bagageiro). Uma cor só, a qualquer hora: a EMTU não publica regra. Cantos retos no ícone.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill", "line", "background"]
+            "usage": [
+              "fill",
+              "line",
+              "background"
+            ]
           }
         }
       },
-      "$type": "color"
+      "$type": "color",
+      "low-floor": {
+        "$value": "{ref.color.blue.700}",
+        "$description": "Ônibus SPTrans de piso baixo (embarque sem degrau), de qualquer linha: o ponto da camada opcional, com anel branco.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "fill",
+              "background"
+            ],
+            "avoid": [
+              "Não usar para ônibus com suporte de bici: esses têm as cores de status."
+            ]
+          }
+        }
+      }
     },
     "parking": {
       "$description": "Dá para deixar a bici aqui agora, e em que condições? A forma diz o tipo (casinha = bicicletário, círculo = paraciclo).",
@@ -94,7 +157,9 @@
         "$description": "Livre: gratuito, sem cadastro.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill"]
+            "usage": [
+              "fill"
+            ]
           }
         }
       },
@@ -103,7 +168,9 @@
         "$description": "Gratuito com cadastro no local (estações e terminais).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill"]
+            "usage": [
+              "fill"
+            ]
           }
         }
       },
@@ -112,7 +179,9 @@
         "$description": "Pago.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill"]
+            "usage": [
+              "fill"
+            ]
           }
         }
       },
@@ -121,7 +190,9 @@
         "$description": "Só clientes ou autorizados.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill"]
+            "usage": [
+              "fill"
+            ]
           }
         }
       },
@@ -130,11 +201,70 @@
         "$description": "Fechado agora, pelo horário do OpenStreetMap. Vence as outras cores e ganha uma barra diagonal.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill"]
+            "usage": [
+              "fill"
+            ]
           }
         }
       },
       "$type": "color"
+    },
+    "terminal": {
+      "$type": "color",
+      "sptrans": {
+        "$value": "{ref.color.slate.700}",
+        "$description": "Terminal de ônibus urbano da SPTrans: o quadrado sob o ônibus com teto.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "fill",
+              "background"
+            ],
+            "contrast": [
+              {
+                "against": "map.icon.on",
+                "min": 3
+              }
+            ]
+          }
+        }
+      },
+      "emtu": {
+        "$value": "{ref.color.cyan.700}",
+        "$description": "Terminal metropolitano da EMTU: a mesma cor dos seletivos.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "fill",
+              "background"
+            ],
+            "contrast": [
+              {
+                "against": "map.icon.on",
+                "min": 3
+              }
+            ]
+          }
+        }
+      },
+      "coach": {
+        "$value": "{ref.color.stone.600}",
+        "$description": "Terminal rodoviário (Tietê, Barra Funda, Jabaquara).",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "fill",
+              "background"
+            ],
+            "contrast": [
+              {
+                "against": "map.icon.on",
+                "min": 3
+              }
+            ]
+          }
+        }
+      }
     },
     "icon": {
       "ink": {
@@ -142,7 +272,9 @@
         "$description": "Contorno escuro dos ícones do mapa. Destaca o verde de um bicicletário sobre o verde de um itinerário, sem sombra (que pesa no celular).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["outline"]
+            "usage": [
+              "outline"
+            ]
           }
         }
       },
@@ -151,7 +283,11 @@
         "$description": "Símbolos e halos brancos: seta do ônibus, suporte do paraciclo, contorno das estações, texto dos rótulos da rota.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["icon", "outline", "text"],
+            "usage": [
+              "icon",
+              "outline",
+              "text"
+            ],
             "contrast": [
               {
                 "against": "map.bus.usual.ok",
@@ -209,34 +345,16 @@
       },
       "$type": "color"
     },
-    "stop": {
-      "body": {
-        "$value": "{ref.color.stone.900}",
-        "$description": "Ícone de ponto de ônibus (ônibus de frente).",
-        "$extensions": {
-          "info.bicisampa": {
-            "usage": ["fill"]
-          }
-        }
-      },
-      "lights": {
-        "$value": "{ref.color.amber.200}",
-        "$description": "Faróis do ícone de ponto.",
-        "$extensions": {
-          "info.bicisampa": {
-            "usage": ["fill"]
-          }
-        }
-      },
-      "$type": "color"
-    },
     "location": {
       "accent": {
         "$value": "{ref.color.blue.600}",
         "$description": "Bolinha azul de \"você está aqui\" e o círculo de precisão.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill", "line"]
+            "usage": [
+              "fill",
+              "line"
+            ]
           }
         }
       },
@@ -248,7 +366,9 @@
         "$description": "Ponta norte da bússola.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["fill"]
+            "usage": [
+              "fill"
+            ]
           }
         }
       },
@@ -261,7 +381,10 @@
         "$description": "A pé.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -270,7 +393,10 @@
         "$description": "Pedalando.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -279,7 +405,10 @@
         "$description": "Ônibus com a bici a bordo.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -288,7 +417,10 @@
         "$description": "Ônibus sem a bici (ela ficou num bicicletário).",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -297,7 +429,10 @@
         "$description": "Seletivo EMTU, bici no bagageiro.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -306,7 +441,10 @@
         "$description": "Faixa branca por baixo do trajeto, para ele saltar sobre o mapa.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -315,7 +453,10 @@
         "$description": "Contorno do rótulo \"Total\" da viagem.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -324,7 +465,10 @@
         "$description": "Marcador ⇄ de troca de modo.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["line", "fill"]
+            "usage": [
+              "line",
+              "fill"
+            ]
           }
         }
       },
@@ -334,7 +478,9 @@
           "$description": "Pin A (origem).",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["background"]
+              "usage": [
+                "background"
+              ]
             }
           }
         },
@@ -343,7 +489,9 @@
           "$description": "Pins de parada.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["background"]
+              "usage": [
+                "background"
+              ]
             }
           }
         },
@@ -352,7 +500,9 @@
           "$description": "Pin B (destino).",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["background"]
+              "usage": [
+                "background"
+              ]
             }
           }
         }
@@ -368,7 +518,9 @@
           "$description": "Tempo, kcal e distância de um trecho.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         },
@@ -377,7 +529,9 @@
           "$description": "Código da linha num trecho de ônibus ou trem.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         },
@@ -386,7 +540,9 @@
           "$description": "O rótulo \"Total\" da viagem.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         }
@@ -398,7 +554,9 @@
           "$description": "Rótulos de trecho.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         },
@@ -407,7 +565,9 @@
           "$description": "Código da linha e o total: precisam ler mesmo pequenos.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         }
@@ -419,7 +579,9 @@
           "$description": "Letras um pouco abertas: o contorno grosso fecha o espaço entre elas.",
           "$extensions": {
             "info.bicisampa": {
-              "usage": ["font"]
+              "usage": [
+                "font"
+              ]
             }
           }
         }
@@ -436,7 +598,9 @@
         "$description": "Número 1, 2… nos ícones de trecho quando há mais de uma condução do mesmo tipo.",
         "$extensions": {
           "info.bicisampa": {
-            "usage": ["font"]
+            "usage": [
+              "font"
+            ]
           }
         }
       }

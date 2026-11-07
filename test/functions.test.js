@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { readFileSync } from 'node:fs';
 
-import { vehicleFilter } from '../functions/_lib/vehicles.js';
+import { lowFloorFilter, vehicleFilter } from '../functions/_lib/vehicles.js';
 import { normalize } from '../functions/api/rail-status.js';
 import { normalizeRoute } from '../functions/api/route.js';
 
@@ -25,11 +25,26 @@ test('selectVehicles keeps fleet buses on any line and flags unusual lines', () 
   assert.equal(v[1].to, 'ITAIM PAULISTA');
 });
 
-test('the fleet list has only 23 m superarticulated buses', () => {
+test('the fleet list has only superarticulated buses', () => {
   const fleet = JSON.parse(readFileSync(new URL('../data/bike-fleet.json', import.meta.url)));
-  assert.deepEqual(fleet.types, ['A23']);
+  assert.deepEqual(fleet.types, ['Articulado (23m)', 'Articulado', 'A23']);
   assert.equal(fleet.prefixes.length, fleet.count);
   assert.ok(fleet.count > 1000);
+});
+
+test('lowFloorFilter keeps register buses as compact rows with their door', () => {
+  const select = lowFloorFilter({ D: ['10001'], C: ['20002'], T: [] });
+  const out = select({
+    hr: '13:00',
+    l: [
+      { c: '8000-10', sl: 2, lt0: 'Lapa', lt1: 'Pça. Ramos', vs: [{ p: 10001, py: -23.5, px: -46.6 }, { p: 99999, py: 0, px: 0 }] },
+      { c: '1012-10', sl: 1, lt0: 'Jd. Monte Belo', lt1: 'Term. Princesa Isabel', vs: [{ p: 30003, py: 0, px: 0 }] },
+      { c: '5111-10', sl: 1, lt0: 'Term. Grajaú', lt1: 'Pq. D. Pedro', vs: [{ p: 20002, py: -23.6, px: -46.7 }] },
+    ],
+  });
+  assert.deepEqual(out.vehicles, [['10001', '8000-10', 2, -23.5, -46.6, 'D'], ['20002', '5111-10', 1, -23.6, -46.7, 'C']]);
+  // Destination sign: lt1 in sentido 2, lt0 in sentido 1; lines without one are left out.
+  assert.deepEqual(out.to, { '8000-10|2': 'Pça. Ramos', '5111-10|1': 'Term. Grajaú' });
 });
 
 test('normalizeRoute turns GeoSampa features into simplified directions', () => {

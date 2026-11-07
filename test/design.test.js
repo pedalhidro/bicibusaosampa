@@ -23,7 +23,7 @@ const ROLE_LITERALS = {
 };
 const literalRule = (key) => Object.keys(ROLE_LITERALS).find((k) => k === key || (k.endsWith('.*') && key.startsWith(k.slice(0, -1))));
 // Custom properties set at runtime, outside the tokens.
-const RUNTIME_VARS = ['--sat', '--sar', '--sab', '--sal', '--bus-scale'];
+const RUNTIME_VARS = ['--sat', '--sar', '--sab', '--sal', '--bus-scale', '--sheet-bottom'];
 
 const sources = () => [
   'public/style.css',

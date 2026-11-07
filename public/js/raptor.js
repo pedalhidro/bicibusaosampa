@@ -117,6 +117,20 @@ function csr(n, pairs) {
 // ------------------------------------------------------------------ network
 
 /**
+ * Which network a pattern belongs to, for the planner's "use" switches: 'rail' (Metrô,
+ * CPTM and the concessions), 'sptrans' (city buses) or 'emtu' (intercity seletivos).
+ * transit.json marks EMTU patterns with `agency`; files built before that field
+ * existed are told apart by `bikes`, which only the seletivo coaches have.
+ */
+export function networkOf(p) {
+  if (p.mode !== 'bus') return 'rail';
+  if (p.agency != null) return p.agency === 'emtu' ? 'emtu' : 'sptrans';
+  return p.bikes === 1 ? 'emtu' : 'sptrans';
+}
+
+export const NETWORKS = ['sptrans', 'rail', 'emtu'];
+
+/**
  * Prepares the network for queries.
  * transit: data/routing/transit.json; railLines: data/rail-lines.json;
  * bikeBuses: data/bike-buses.json; parking: data/bike-parking.geojson;
@@ -136,6 +150,7 @@ export function loadNetwork({ transit, railLines, bikeBuses, parking, streets = 
     departures: Int32Array.from(p.departures),
     usualBikeBus: p.mode === 'bus' && usual.has(p.route),
     bikes: p.bikes === 1,
+    network: networkOf(p),
   }));
 
   const byRouteDir = new Map();
@@ -384,7 +399,10 @@ function insert(list, label) {
  * arrival time and energy, sorted by `optimize`: 'time' keeps those within a cap of
  * the fastest; 'energy' keeps the least effort ones whatever they take (up to
  * MAX_TRIP_S); 'balanced' ranks both by kcal + timeWeight × minutes (see balance), all of
- * them, for the caller to cut. `avoidArterials` keeps
+ * them, for the caller to cut. `networks`: which of NETWORKS may be ridden (default
+ * all; none = only the direct walk or ride). `model`: road preferences for the bike
+ * legs (custom-model.js composeModel), which replace the built-in ones and
+ * `avoidArterials`. Otherwise `avoidArterials` keeps
  * bikes off busy roads without a bike lane where it can. `live`: Map pattern → trips
  * from live-trips.js, or null.
  */
@@ -418,10 +436,11 @@ export function balance(journeys, k = DEFAULT_TIME_WEIGHT) {
   return list.sort((a, b) => a.balance - b.balance || a.arrive - b.arrive);
 }
 
-function search(net, { from, to, date = new Date(), profile = 'bike', power = POWER_LEVELS.endorfinado, optimize = 'time', avoidArterials = true, live = null, day = null }) {
+function search(net, { from, to, date = new Date(), profile = 'bike', power = POWER_LEVELS.endorfinado, optimize = 'time', avoidArterials = true, model = null, networks = NETWORKS, live = null, day = null }) {
   const prof = PROFILES[profile];
+  const useNetwork = new Set(networks);
   day ??= queryDay(net, date);
-  const bike = bikeModel(power, { avoidArterials });
+  const bike = bikeModel(power, { avoidArterials, model });
   const S = net.stops.count;
   const { lat, lon } = net.stops;
   const g = net.streets;
@@ -620,9 +639,10 @@ function search(net, { from, to, date = new Date(), profile = 'bike', power = PO
     const ready = k > 1 ? CHANGE_S : 0;
     for (const [key, startIdx] of queue) {
       const pi = key >> 1, layer = key & 1;
+      const p = net.patterns[pi];
+      if (!useNetwork.has(p.network)) continue;
       const trips = providerFor(pi, layer);
       if (!trips) continue;
-      const p = net.patterns[pi];
       const boardJ = BOARD_J[p.mode === 'bus' ? 'bus' : 'rail'][layer];
       let onboard = []; // { h, from: label, b: boarding index, e: energy on boarding }
       for (let i = startIdx; i < p.stops.length; i++) {

@@ -4,7 +4,8 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
 [busao.bicisampa.info](https://busao.bicisampa.info).
 
 - **Metrô e trens** (linhas 1 a 15 e 17): linhas finas na cor da situação da
-  bicicleta agora:
+  bicicleta agora, sobre um contorno escuro (o símbolo de ferrovia dos mapas), para
+  não se confundirem com os itinerários de ônibus:
   - 🟢 verde: liberada
   - 🟡 amarelo: a linha opera, mas está fora do horário da bici
   - 🔴 vermelho: a linha está fechada ou paralisada
@@ -25,13 +26,12 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
     | **Fora do horário da bici** | 🟨 amarelo | 🟧 laranja |
 
   - "Linha habitual" é uma linha em que os superarticulados rodam normalmente, com
-    itinerário e pontos de parada no mapa. Um ônibus com suporte em outra linha
-    aparece como **fora da rota habitual**: o itinerário e os pontos dessa linha são
-    carregados na hora e ela é listada à parte no painel.
+    itinerário no mapa. Um ônibus com suporte em outra linha
+    aparece como **fora da rota habitual**: o itinerário dessa linha é
+    carregado na hora e ela é listada à parte no painel.
   - Os itinerários têm 10 m de largura no chão (no mínimo 1,5 px na tela) e ficam
     deslocados, para que sentidos e linhas no mesmo corredor apareçam lado a lado.
-  - Os pontos de parada aparecem a partir do zoom 14.
-- **Ônibus seletivos da EMTU**: posição ao vivo, itinerário e pontos das 20 linhas
+- **Ônibus seletivos da EMTU**: posição ao vivo e itinerário das 20 linhas
   seletivas intermunicipais (ônibus rodoviários, só passageiros sentados), em
   azul-petróleo e com cantos retos. A bici vai no bagageiro, se houver espaço. A EMTU
   não publica regra nem horário para bicicletas nesses ônibus, então o mapa não dá
@@ -51,9 +51,26 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
 
   Estacionamentos privados ficam de fora. O popup mostra operador, vagas, se é
   coberto, até quando fica aberto e o link para corrigir os dados no OpenStreetMap.
+- **Terminais de ônibus** (GeoSampa): os da SPTrans (cinza-azulado), os
+  metropolitanos da EMTU (azul-petróleo) e os rodoviários (cinza), junto com as
+  estações a partir do zoom 12. O popup diz o bicicletário mais próximo (até 200 m).
+- **Ônibus de piso baixo** (camada opcional, desligada no início): todos os ônibus
+  SPTrans de piso baixo ao vivo, de qualquer linha, como pontos azuis a partir do
+  zoom 12. Saem do cadastro da frota da SPTrans (10/04/2026), que diz a porta de
+  embarque em nível; os demais ônibus da frota são de piso alto, com elevador.
 
-O controle de camadas, no canto superior direito, liga e desliga separadamente:
-trilhos, estações, itinerários, ônibus ao vivo, pontos de ônibus e bicicletários.
+O botão de camadas, no canto superior direito, tem duas abas. Em **Camadas**: o mapa
+de fundo (OpenStreetMap, OpenStreetMap claro, Positron e Voyager da CARTO, ou nenhum), o topográfico colorido
+por cima, e liga e desliga trilhos, estações e terminais, itinerários, ônibus ao vivo,
+bicicletários e os ônibus de piso baixo. Em **Legenda**: o que cada
+cor e forma quer dizer. Os créditos ficam no canto do mapa, ao lado de um resumo do
+que está ao vivo (toque nele para ver as linhas).
+
+O **planejador de viagens** tem estilos de rota de bici (padrão, ciclovias primeiro,
+menos subidas, mais direto) e preferências marcáveis, escritos como os *custom
+models* do GraphHopper em [public/data/bike-models.json](public/data/bike-models.json);
+em "Personalizado" dá para escrever as próprias regras. Também dá para escolher quais
+transportes usar (ônibus SPTrans, metrô e trens, seletivos EMTU).
 
 Os outros ônibus intermunicipais (EMTU, hoje Artesp) não aparecem porque não aceitam
 bicicleta a bordo.
@@ -111,8 +128,11 @@ public/                       site estático (Leaflet)
   data/bike-buses.json        linhas habituais dos superarticulados e regras da SPTrans
   data/rail.geojson           trilhos e estações (gerado, OpenStreetMap)
   data/bus-routes.geojson     itinerários das linhas habituais (gerado, GTFS SPTrans)
-  data/bus-stops.geojson      pontos de parada dessas linhas (gerado, GTFS SPTrans)
+  data/bus-stops.geojson      pontos de parada dessas linhas (gerado, GTFS SPTrans; não vão
+                              mais para o mapa, densos demais, mas seguem para reúso)
   data/bike-parking.geojson   bicicletários e paraciclos (gerado, OpenStreetMap + GeoSampa)
+  data/bus-terminals.geojson  terminais de ônibus (gerado, GeoSampa)
+  data/bike-models.json       estilos de rota de bici do planejador (editado à mão)
   data/lines/<código>.json    itinerário e pontos de cada linha da SPTrans, para as que
                               aparecem fora da rota habitual (gerado, GTFS SPTrans)
   data/emtu-seletivo.json     linhas seletivas da EMTU (do relatório tarifário) e regra
@@ -120,8 +140,11 @@ public/                       site estático (Leaflet)
   data/emtu-stops.geojson     pontos dessas linhas (gerado, feed da EMTU)
   data/gtfs/emtu-seletivo.zip GTFS dessas linhas (gerado, feed da EMTU; horários nas
                               paradas estimados pela distância), livre para reúso
-data/bike-fleet.json          prefixos dos ônibus com suporte (gerado, cadastro da frota)
+data/bike-fleet.json          prefixos dos ônibus com suporte (gerado, cadastros da frota)
+data/low-floor-fleet.json     prefixos dos ônibus de piso baixo (gerado, "Frota cadastrada" da SPTrans)
 functions/api/buses.js        só os ônibus da frota com suporte (cache de 20 s), via relay em produção
+functions/api/config.js       configurações públicas do ambiente (chave da CARTO para os mapas de fundo)
+functions/api/low-floor.js    ônibus de piso baixo ao vivo (cache de 20 s), via relay em produção
 functions/api/emtu-buses.js   ônibus seletivos da EMTU ao vivo (cache de 20 s), via relay
 relay/                        relay no Cloud Run: a SPTrans bloqueia o Cloudflare, e o
                               certificado do feed da EMTU venceu (o Cloudflare o recusa)
@@ -150,7 +173,7 @@ npm install
 cp .env.example .env            # e preencha SPTRANS_TOKEN
 npm run dev                      # http://localhost:8788
 npm test
-npm run build:data               # regenera as camadas (ou só uma: -- rail, -- bus, -- emtu, -- parking)
+npm run build:data               # regenera as camadas (ou só uma: -- rail, -- bus, -- emtu, -- parking, -- terminals)
 ```
 
 Os seletivos da EMTU só aparecem ao vivo com o relay rodando local (ele usa o

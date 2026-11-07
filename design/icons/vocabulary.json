@@ -115,7 +115,12 @@
     },
     "remove": {
       "name": "x",
-      "description": "Remover uma parada."
+      "description": "Remover: uma parada, ou a rota mostrada no mapa."
+    },
+    "info": {
+      "name": "info-circle",
+      "filled": "info-circle",
+      "description": "Explicação de um grupo de opções: abre e fecha o texto ao lado."
     }
   }
 }

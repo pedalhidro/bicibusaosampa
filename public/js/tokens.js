@@ -154,6 +154,9 @@ export const tokens = {
       "wait": "#eab308",
       "closed": "#dc2626"
     },
+    "rail": {
+      "casing": "#1c1917"
+    },
     "bus": {
       "usual": {
         "ok": "#16a34a",
@@ -163,7 +166,8 @@ export const tokens = {
         "ok": "#9333ea",
         "wait": "#f97316"
       },
-      "emtu": "#0e7490"
+      "emtu": "#0e7490",
+      "lowFloor": "#1d4ed8"
     },
     "parking": {
       "free": "#16a34a",
@@ -172,13 +176,14 @@ export const tokens = {
       "customers": "#78716c",
       "closed": "#dc2626"
     },
+    "terminal": {
+      "sptrans": "#334155",
+      "emtu": "#0e7490",
+      "coach": "#57534e"
+    },
     "icon": {
       "ink": "#1c1917",
       "on": "#ffffff"
-    },
-    "stop": {
-      "body": "#1c1917",
-      "lights": "#fde68a"
     },
     "location": {
       "accent": "#2563eb"

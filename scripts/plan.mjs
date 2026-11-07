@@ -3,10 +3,13 @@
 //
 //   node scripts/plan.mjs --from=-23.5614,-46.6558 --to=-23.5428,-46.4719
 //        [--at 2026-10-07T11:00] [--power suave|endorfinado|intenso|competicao|<W>]
-//        [--profile walk,bike,carry] [--optimize time|energy|balanced] [--time-weight 1|3|10] [--allow-arterials] [--offline]
+//        [--profile walk,bike,carry] [--optimize time|energy|balanced] [--time-weight 1|3|10] [--allow-arterials] [--networks sptrans,rail,emtu] [--offline]
+//        [--model padrao|ciclovias|plano|direto] [--prefs avoidArterials,avoidTrunk,avoidSteep]
 //
 // --at is São Paulo time; without it, now. Live 23m buses come from
-// busao.bicisampa.info/api/buses unless --offline (or --at is set).
+// busao.bicisampa.info/api/buses unless --offline (or --at is set). --model picks a
+// road-preference style from public/data/bike-models.json, with --prefs (default: the
+// preferences marked default there, minus avoidArterials with --allow-arterials).
 
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -14,6 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
+import { composeModel } from '../public/js/custom-model.js';
 import { liveTrips } from '../public/js/live-trips.js';
 import { loadNetwork, plan, POWER_LEVELS, queryDay } from '../public/js/raptor.js';
 import { decodeStreets } from '../public/js/streets.js';
@@ -34,6 +38,9 @@ const { values: args } = parseArgs({
     profile: { type: 'string', default: 'walk,bike' },
     optimize: { type: 'string', default: 'time' },
     'allow-arterials': { type: 'boolean', default: false },
+    networks: { type: 'string', default: 'sptrans,rail,emtu' },
+    model: { type: 'string' },
+    prefs: { type: 'string' },
     'time-weight': { type: 'string', default: '3' },
     offline: { type: 'boolean', default: false },
   },
@@ -47,6 +54,14 @@ const power = POWER_LEVELS[args.power] ?? Number(args.power);
 const date = args.at ? new Date(`${args.at}-03:00`) : new Date();
 
 const readJson = async (name) => JSON.parse(await readFile(join(DATA, name), 'utf8'));
+// Road preferences: only with --model or --prefs; otherwise the built-in comfort table.
+let model = null;
+if (args.model || args.prefs) {
+  const models = await readJson('bike-models.json');
+  const prefs = args.prefs != null ? args.prefs.split(',').filter(Boolean)
+    : Object.entries(models.preferences).filter(([k, p]) => p.default && !(k === 'avoidArterials' && args['allow-arterials'])).map(([k]) => k);
+  model = composeModel(models, args.model ?? models.default, prefs);
+}
 let t = performance.now();
 const streetsFile = join(DATA, 'routing', 'streets.bin');
 let streets = null;
@@ -99,7 +114,7 @@ function describe(leg) {
 console.log(`saída ${hhmm(day.now)} · ${args.power} (${power} W) · ${{ energy: 'menos esforço', balanced: 'balanceado' }[args.optimize] ?? 'mais rápido'}\n`);
 for (const profile of args.profile.split(',')) {
   t = performance.now();
-  const journeys = plan(net, { from: point(args.from), to: point(args.to), profile, power, optimize: args.optimize, timeWeight: Number(args['time-weight']), avoidArterials: !args['allow-arterials'], live, day });
+  const journeys = plan(net, { from: point(args.from), to: point(args.to), profile, power, optimize: args.optimize, timeWeight: Number(args['time-weight']), avoidArterials: !args['allow-arterials'], model, networks: args.networks.split(',').filter(Boolean), live, day });
   console.log(`== ${PROFILE_NAMES[profile]} (${Math.round(performance.now() - t)} ms)`);
   journeys.splice(6);
   if (!journeys.length) console.log('  nenhuma opção');

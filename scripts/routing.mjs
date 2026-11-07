@@ -111,6 +111,8 @@ export function buildTransit({ routes, trips, stops, stopTimes, frequencies, cal
     // GTFS bikes_allowed: the bike goes on any trip of this pattern, whatever the
     // hour (EMTU seletivo coaches, in the luggage hold).
     if (bikes) pattern.bikes = 1;
+    // Intercity (EMTU) lines; SPTrans and rail patterns carry no agency.
+    if (route.feed === 'emtu') pattern.agency = 'emtu';
     patternByKey.set(key, pattern);
     patterns.push(pattern);
   }

@@ -22,12 +22,12 @@ const DEV = VERSION === 'dev';
 const SHELL = [
   '/', '/tokens.css', '/style.css', '/manifest.webmanifest',
   '/icons/icon-32.png', '/icons/icon-192.png', '/icons/metro.svg', '/icons/cptm.svg',
-  '/js/app.js', '/js/geocode.js', '/js/heading.js', '/js/icons.js', '/js/live-trips.js', '/js/locate.js',
+  '/js/app.js', '/js/custom-model.js', '/js/geocode.js', '/js/heading.js', '/js/icons.js', '/js/live-trips.js', '/js/locate.js',
   '/js/offset.js', '/js/parking.js', '/js/planner.js', '/js/planner-worker.js', '/js/raptor.js',
   '/js/rail.js', '/js/schedule.js', '/js/streets.js', '/js/time.js', '/js/tokens.js', '/js/ui.js',
   '/vendor/leaflet-rotate/leaflet-rotate.js',
   '/data/rail-lines.json', '/data/bike-buses.json', '/data/rail.geojson', '/data/bus-routes.geojson',
-  '/data/emtu-seletivo.json', '/data/emtu-routes.geojson',
+  '/data/emtu-seletivo.json', '/data/emtu-routes.geojson', '/data/bus-terminals.geojson', '/data/bike-models.json',
 ];
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',

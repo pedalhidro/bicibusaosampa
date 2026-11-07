@@ -410,20 +410,23 @@ Não edite à mão: o teste confere.
 | `map.status.ok` | `#16a34a` | Bici liberada agora. |
 | `map.status.wait` | `#eab308` | A linha opera, mas está fora do horário da bici. Sempre com tracejado, para não depender só da cor. |
 | `map.status.closed` | `#dc2626` | Linha fechada ou paralisada. Sempre com pontilhado. |
+| `map.rail.casing` | `#1c1917` | Contorno escuro sob cada linha de metrô e trem, o símbolo de ferrovia: separa os trilhos dos itinerários de ônibus. Sempre contínuo; o tracejado do status fica na linha de cima. |
 | `map.bus.usual.ok` | `#16a34a` | Linha habitual, bici liberada. |
 | `map.bus.usual.wait` | `#eab308` | Linha habitual, fora do horário da bici. Contorno tracejado. |
 | `map.bus.offroute.ok` | `#9333ea` | Superarticulado fora das linhas habituais, bici liberada. |
 | `map.bus.offroute.wait` | `#f97316` | Fora das linhas habituais e fora do horário da bici. Contorno tracejado. |
 | `map.bus.emtu` | `#0e7490` | Seletivo EMTU (bici no bagageiro). Uma cor só, a qualquer hora: a EMTU não publica regra. Cantos retos no ícone. |
+| `map.bus.low-floor` | `#1d4ed8` | Ônibus SPTrans de piso baixo (embarque sem degrau), de qualquer linha: o ponto da camada opcional, com anel branco. |
 | `map.parking.free` | `#16a34a` | Livre: gratuito, sem cadastro. |
 | `map.parking.signup` | `#2563eb` | Gratuito com cadastro no local (estações e terminais). |
 | `map.parking.paid` | `#db2777` | Pago. |
 | `map.parking.customers` | `#78716c` | Só clientes ou autorizados. |
 | `map.parking.closed` | `#dc2626` | Fechado agora, pelo horário do OpenStreetMap. Vence as outras cores e ganha uma barra diagonal. |
+| `map.terminal.sptrans` | `#334155` | Terminal de ônibus urbano da SPTrans: o quadrado sob o ônibus com teto. |
+| `map.terminal.emtu` | `#0e7490` | Terminal metropolitano da EMTU: a mesma cor dos seletivos. |
+| `map.terminal.coach` | `#57534e` | Terminal rodoviário (Tietê, Barra Funda, Jabaquara). |
 | `map.icon.ink` | `#1c1917` | Contorno escuro dos ícones do mapa. Destaca o verde de um bicicletário sobre o verde de um itinerário, sem sombra (que pesa no celular). |
 | `map.icon.on` | `#ffffff` | Símbolos e halos brancos: seta do ônibus, suporte do paraciclo, contorno das estações, texto dos rótulos da rota. ⚠️ contraste com `map.bus.usual.wait` abaixo de 3:1; contraste com `map.bus.offroute.wait` abaixo de 3:1. |
-| `map.stop.body` | `#1c1917` | Ícone de ponto de ônibus (ônibus de frente). |
-| `map.stop.lights` | `#fde68a` | Faróis do ícone de ponto. |
 | `map.location.accent` | `#2563eb` | Bolinha azul de "você está aqui" e o círculo de precisão. |
 | `map.compass.north` | `#dc2626` | Ponta norte da bússola. |
 | `map.plan.walk` | `#57534e` | A pé. |

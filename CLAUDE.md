@@ -14,12 +14,12 @@ light, reusable-data choices.
 
 ```sh
 npm run dev          # wrangler pages dev → http://localhost:8788 (reads SPTRANS_TOKEN from .env)
-npm test             # node --test: schedule rules, holidays, headings, lanes, bike parking, function helpers
-npm run build:data   # regenerate data files (`-- rail`, `-- bus`, `-- emtu`, `-- parking` or `-- fleet` for one)
+npm test             # node --test: schedule rules, holidays, headings, lanes, bike parking, terminals, custom models, function helpers
+npm run build:data   # regenerate data files (`-- rail`, `-- bus`, `-- emtu`, `-- parking`, `-- terminals` or `-- fleet` for one)
 npm run build:tokens # design/tokens/ → public/tokens.css, public/js/tokens.js and the tables in DESIGN.md
 npm run build:icons  # design/icons/ → public/js/icons.js and the icons in index.html (icons:fetch copies new SVGs from the icon library)
 node scripts/suggest-lines.mjs [--write]   # compare live rack buses with the expected lines
-node scripts/plan.mjs --from=LAT,LON --to=LAT,LON [--at=…] [--power=suave]   # try the trip planner
+node scripts/plan.mjs --from=LAT,LON --to=LAT,LON [--at=…] [--power=suave] [--model=plano --prefs=avoidArterials] [--networks=sptrans,rail]   # try the trip planner
 ```
 
 To check UI changes, run the dev server and take screenshots with Playwright. Use
@@ -30,10 +30,18 @@ append `window.__map = map;`.
 ## Layout
 
 - `public/`: the site, deployed as-is.
-  - `js/app.js`: map, base maps (OSM; "Topográfico colorido" = Pedal Hidrográfico's
-    `telhas.pedalhidrografi.co/rmsampa-v2`, zooms 8–16) stacked with their own
-    on/off and opacity (default OSM 100 %, topo above it at 20 %), layers
-    sheet, polling (rail status 60 s, buses 20 s).
+  - `js/app.js`: map, base maps, layers sheet, polling (rail status 60 s, buses 20 s).
+    - Base maps: one background as a radio (OSM, "OSM claro" = OSM through a lighter
+      CSS filter, none) with an opacity slider, and "Topográfico colorido" (Pedal
+      Hidrográfico's `telhas.pedalhidrografi.co/rmsampa-v2`, zooms 8–16) on top with
+      its own on/off and opacity (default 20 %). Saved as `baseMaps` in localStorage
+      (the older `{ osm, topo }` shape is migrated).
+    - CARTO's Positron (Dark Matter in dark mode) and Voyager: since 2026-09 every
+      CARTO tile request needs a free, domain-locked key. It's `CARTO_API_KEY` (in
+      `.env` locally, a Pages variable in production), served to the page by
+      `functions/api/config.js`; the two options appear once it arrives (offline or
+      without it: OSM only). Their terms: credits visible on the map, no browser cache
+      over 30 days, no server proxy. Don't embed someone else's Mapbox token.
   - `js/ui.js`: the two sheets (☰ menu, ⧉ layers + legend; bottom sheets with a drag
     grip on phones, cards on wider screens), the toast, and the PWA update banner.
   - `js/locate.js`: locate button and blue dot. Opens on Terminal Bandeira at zoom 16;
@@ -60,7 +68,10 @@ append `window.__map = map;`.
       (heading − bearing), route trail icons (+ bearing), route labels.
     - On phones tile layers only refresh on moveend, so app.js calls `_update()` on
       them after a rotation.
-    - The map corner attribution is off; credits are in the menu footer.
+    - Credits are Leaflet's attribution control (bottom right; CARTO needs them on
+      the map), next to a live chip (bottom left: rail lines open to bikes, rack buses
+      and EMTU coaches live; tapping it opens the line lists). Both ride above the
+      phone sheet via `--sheet-bottom`. The menu has no footer.
   - Pure modules, imported by the tests too:
     - `time.js`: São Paulo time and holidays.
     - `schedule.js`: time-window engine.
@@ -74,12 +85,23 @@ append `window.__map = map;`.
       "Balanceado" runs both and sorts all their options by U = kcal + k × minutes
       (`balance()`), k = 1, 3 (default) or 10 from the panel's "Equilíbrio" slider, which
       re-ranks the returned candidates without a new search.
+      `networks` (`sptrans`, `rail`, `emtu`) limits which patterns are ridden; EMTU
+      patterns carry `agency: 'emtu'` in transit.json (older files: told by `bikes`).
+    - `custom-model.js`: road preferences for bike legs in GraphHopper custom-model
+      syntax, **priority only** (if/else_if/else + multiply_by; variables road_class,
+      bike_infra, oneway, push, average_slope). Compiled once per model into a table
+      per edge flags × grade bin in `streets.js`; cost = (time or energy) ÷ priority, 0
+      leaves the street out. Never touches speed: reported times stay real. Styles and
+      preferences live in `data/bike-models.json` (hand-edited); its `padrao` must
+      reproduce the built-in comfort table (a test checks it).
     - `streets.js`: street graph (`data/routing/streets.bin`): decoding, snapping, a
       Dijkstra for walking/cycling legs with one-ways, pushing and slopes. Bike speed and
       energy follow amora's model (power level on the flat, 2× on climbs); walking uses
       Tobler and Minetti. Without the file, legs fall back to straight lines × 1.3.
       "Evitar avenidas" (on by default) counts secondary, primary and trunk roads
-      without a bike lane or track 5× in route choice; reported times stay real.
+      without a bike lane or track 5× in route choice; reported times stay real. The
+      planner sends it as a custom-model preference; the built-in table and the
+      `avoidArterials` flag remain for callers without a model.
     - `live-trips.js`: live 23m buses from `/api/buses` turned into planner trips on
       the line they're actually running.
     - EMTU seletivo patterns (`p.bikes`) ride on their estimated timetable in both
@@ -89,7 +111,7 @@ append `window.__map = map;`.
       on the empty map (fills the first empty slot; with all set, the tap becomes the new
       destination and the old one a stop). Taps on buses, stations and lines keep their
       popups. Pins are draggable; their popup removes them. With stops, legs are planned
-      one after another (best option each). A shown route fades stops, stations and
+      one after another (best option each). A shown route fades stations and
       parking (`#map.route-shown`) and every bus/rail line it doesn't ride
       (`focusLines()` in app.js). Each leg is labelled with SVG text along the line
       itself (textPath on an invisible, west→east, screen-smoothed copy of the leg,
@@ -104,10 +126,15 @@ append `window.__map = map;`.
       badge; a dark ⇄ marker sits at each change of mode. Trail icons shrink when
       zoomed out (full size from zoom 15, half at 11). Route lines don't bubble
       clicks, so tapping them never adds a trip point.
-    - The mode selector (three emoji buttons under the section title, text in
+    - The mode selector (emoji buttons under the section title, text in
       aria-label/title) maps to profiles: 🚌 + 🚲 + 🅿️ (intermodal, bike, park) =
-      `bike`, 🚌 + 🚲 = `carry`, 🚌 (intermodal on foot) = `walk`, 🚲 (only the bike, no
-      transit: the planner's direct leg) = `cycle`. The worker downloads the network on the first point or
+      `bike`, 🚌 + 🚲 = `carry`, 🚲 (only the bike, no transit: the planner's direct
+      leg) = `cycle`. `walk` (intermodal on foot) is no longer offered: saved choices
+      and `m=walk` links fall back to `carry`. The modes and priorities are explained
+      behind (i) toggletips, not in captions. ⚙️ Mais opções has the pace, the route
+      style and preferences (plus "Personalizado": the person's own JSON rules, saved
+      in localStorage), the networks to use, and the departure time. With a route
+      shown, "✕ Limpar" sits next to "Compartilhar". The worker downloads the network on the first point or
       search, not on page load.
   - `data/routing/transit.json`: **generated** (`npm run build:data -- routing`) from the
     SPTrans GTFS plus `data/gtfs/emtu-seletivo.zip`: stops and per line-direction patterns
@@ -126,6 +153,11 @@ append `window.__map = map;`.
     elevations from amora's baked graph (`telhas.pedalhidrografi.co/viario/`). Must
     stay under Cloudflare Pages' 25 MiB file limit; the build refuses otherwise.
     - `parking.js`: bike parking access labels and open/closed status.
+  - `data/bus-terminals.geojson`: **generated** (`-- terminals`, after `parking`) from
+    GeoSampa `geoportal:terminal_onibus` (the source of truth for terminals, per the
+    maintainer; don't patch in OSM ones) (SPTrans urban, EMTU metropolitan and coach
+    terminals; names tidied in `scripts/terminals.mjs`) with the nearest bicicletário
+    within 200 m. Drawn with the stations (same pane, toggle and zoom).
   - `data/rail-lines.json`, `data/bike-buses.json`: **hand-edited** config (lines,
     colours, operating hours, bike rules, the *expected* lines of the rack buses).
   - `data/emtu-seletivo.json`: **hand-edited** list of the EMTU seletivo lines (from
@@ -134,7 +166,7 @@ append `window.__map = map;`.
     from the EMTU feed (`scripts/emtu.mjs`). Lanes keep clear of the SPTrans routes
     (`assignLanes(…, { taken })`), so build `bus` first. Fares come from the feed.
     In app.js the EMTU lines live in `busLineByCode` with `agency: 'emtu'` and share
-    the bus route, live bus and stop layers; vehicles are keyed by `busId()` because
+    the bus route and live bus layers; vehicles are keyed by `busId()` because
     prefixes are only unique per operator.
   - `data/*.geojson`: **generated** by `scripts/build-data.mjs`. Never edit by hand.
     Bus routes carry a precomputed `lane` (`scripts/lanes.mjs`).
@@ -146,16 +178,28 @@ append `window.__map = map;`.
   - `data/lines/<code>.json`: **generated** route and stops of every SPTrans bus line
     (from the GTFS, ~1,350 files, ≤32 KB each), loaded when a rack bus runs off its
     expected lines.
-- `data/bike-fleet.json`: **generated** from `assets/00_businfo_consolidado.csv`
-  (SPTrans fleet register): prefixes of `cidade=SP`, `tipo=A23` ("Articulado 23m")
-  buses. Electric `eA3` buses have no rack and are excluded. Server-side only.
-  `assets/` is gitignored: only the bus numbers are tracked. Rebuild the list locally
-  (`npm run build:data -- fleet`) when the CSV is updated; elsewhere the step is skipped.
+- `data/bike-fleet.json`: **generated** (`-- fleet`) from two SPTrans registers in
+  `assets/` (gitignored: only the bus numbers are tracked): "Frota cadastrada"
+  (`REGISTER_CSV`) buses with Tecnologia "Articulado (23m)" or plain "Articulado"
+  (the maintainer treats both as superarticulated), plus `00_businfo_consolidado.csv`
+  `tipo=A23`. Left out: anything either file marks electric (no rack), and plain
+  "Articulado" buses that businfo says are 18 or 21 m (~630 of the 1,612). Server-side
+  only. Rebuild locally when a register is updated; elsewhere the step is skipped.
+- `data/low-floor-fleet.json`: **generated** (`-- fleet`) from SPTrans' "Frota
+  cadastrada" register (`assets/sptrans-frota-cadastrada-2026-04-10.csv`, the XLSX
+  saved as CSV, gitignored): prefixes of the "Piso Baixo" buses by low door (D/C/T).
+  The rest of the fleet is high-floor with a lift; Olho Vivo's `a` flag can't tell
+  them apart. Update `REGISTER_CSV`/`REGISTER_DATE` in build-data.mjs with a new register.
+- `functions/_lib/olhovivo.js`: the `/Posicao` snapshot. In production it comes from
+  the relay (`OLHOVIVO_RELAY_URL` + `OLHOVIVO_RELAY_KEY`); without those (local dev)
+  it logs in to Olho Vivo directly with `SPTRANS_TOKEN`.
 - `functions/api/buses.js`: keeps the `/Posicao` vehicles whose prefix is in the fleet
   list, wherever they run; each gets `expected: false` when its line isn't in
-  `bike-buses.json`. In production the snapshot comes from the relay
-  (`OLHOVIVO_RELAY_URL` + `OLHOVIVO_RELAY_KEY`); without those (local dev) it logs in
-  to Olho Vivo directly with `SPTRANS_TOKEN`.
+  `bike-buses.json`.
+- `functions/api/low-floor.js`: the low-floor buses, as compact rows
+  (`[prefix, line, sentido, lat, lon, door]`, ~60 KB gzipped). The map layer is opt-in
+  (off by default, `shownLayers` in localStorage) and polls only while on and at
+  zoom ≥ 12; canvas dots culled to the view.
 - `relay/`: tiny Node service on Cloud Run (GCP project `bicisampa`,
   `southamerica-east1`, service `olhovivo-relay`). `GET /posicao` with `X-Relay-Key`
   returns the raw `/Posicao` JSON, cached 15 s. `GET /emtu?linhas=…` returns the
@@ -185,7 +229,8 @@ append `window.__map = map;`.
 - **A GitHub Action commits regenerated data** ("Atualiza camadas do mapa") every Monday
   and whenever a config file changes. Pull before you push.
 - **Secrets:** `SPTRANS_TOKEN` lives in `.env` locally (gitignored), in Secret Manager
-  (`sptrans-token`, for the relay) and as a Pages secret. Pages also has
+  (`sptrans-token`, for the relay) and as a Pages secret. `CARTO_API_KEY` (public by
+  design, domain-locked) is in `.env` and must be a Pages variable too. Pages also has
   `OLHOVIVO_RELAY_URL` and `OLHOVIVO_RELAY_KEY`. Pages only picks up a new secret on
   the next deployment.
 - **The EMTU feed** (`rest-emtu.noxxonsat.com.br/rest/lineDetails?linha=<code>`, one
@@ -252,9 +297,10 @@ any visual change. Edit `design/tokens/*.tokens.json` (DTCG 2025.10), run
 colour, spacing, type, radius, motion or z-index literal (`test/design.test.js` enforces
 it). The rules below are what the colours *mean*; the tokens hold the values.
 
-- **Rail lines:** thin continuous lines in the status colour: green when bikes are
-  allowed now, yellow when the line runs but it's outside bike hours, red when the line
-  is closed or stopped.
+- **Rail lines:** thin lines in the status colour on a dark casing (the railway
+  symbol, so they don't read as bus routes): green when bikes are allowed now, yellow
+  when the line runs but it's outside bike hours, red when the line is closed or
+  stopped. The core keeps the status dashes; the casing is always solid.
 - **Stations:** official Metrô or CPTM icons (`public/icons/`, from Wikimedia Commons),
   chosen by each line's `mode`.
 - **Bus colours** (icons, routes, badges) combine two questions: bikes allowed on buses
@@ -267,14 +313,23 @@ it). The rules below are what the colours *mean*; the tokens hold the values.
 - **Bus routes:** solid lines in the bus colour, 10 m wide on the ground (never under
   1.5 px). They're offset into lanes so both directions and shared corridors lie side
   by side.
-- **Bus stops:** a front-view bus icon, shown from zoom 14; downloaded on first zoom-in
-  and only the ones in view are on the map.
+- **No bus stops on the map** (removed 2026-11 by the maintainer: too dense).
+  `bus-stops.geojson` and `emtu-stops.geojson` are still generated, for reuse, but the
+  site doesn't load them.
 - **Bike parking:** a house for a bicicletário (from zoom 12), a circle for a paraciclo
   (from zoom 14), with a white inverted-U stand and a dark outline. Colour: green =
   free, no sign-up; blue = free with sign-up; pink = paid; grey = customers only;
   red = closed now (overrides the others).
-- **Layer control:** toggles rail lines, stations, bus routes, live buses, bus stops
-  and bike parking.
+- **Bus terminals:** a bus under a roof on a rounded square, coloured by operator
+  (`map.terminal.sptrans`, `.emtu`, `.coach`).
+- **Low-floor buses:** small blue dots with a white ring, all lines (`map.bus.low-floor`).
+- **Rail casing** (`map.rail.casing`) is the same dark tone on both maps: map tokens
+  don't change with the colour scheme.
+- **Layer control:** two tabs. Camadas: base map, topo, and toggles for rail lines,
+  stations and terminals, bus routes, live buses, bike parking and the
+  low-floor buses (opt-in). Legenda: the colour and shape key (the menu has none).
+- **The tapped bus** is drawn bigger with a thicker outline while its popup is open;
+  its line's other buses stay solid and the rest fade.
 
 ## Comfort features (keep them working)
 
@@ -282,6 +337,8 @@ it). The rules below are what the colours *mean*; the tokens hold the values.
   (`locate.whenLocated`); the planner's 18 MB download waits for a real action.
 - On mobile data / data saver, the first planner download asks first; progress is
   shown from the worker's `progress` messages.
+- The peeked phone menu grows on click (or on focusing a text field), not on
+  pointerdown: growing moves the content and would swallow the first tap.
 - After a route is found the form folds into a tappable "A → B" summary
   (`#plan-details.planned`) and results come first.
 - Map taps that add a point show a toast with "Desfazer" and vibrate briefly.
@@ -298,7 +355,7 @@ it). The rules below are what the colours *mean*; the tokens hold the values.
 ## Performance (phones)
 
 - Panning and zooming cost grows with the number of DOM markers, so marker layers are
-  culled to the view: live buses (only from zoom 12, `syncBusMarkers()`), bus stops
+  culled to the view: live buses (only from zoom 12, `syncBusMarkers()`)
   and bike parking are added/removed on `moveend`. Keep new marker layers culled too.
 - No CSS `filter` (e.g. `drop-shadow`) or blurred `box-shadow` on map icons: phones
   repaint each one on every frame. Use outlines drawn in the SVG instead.

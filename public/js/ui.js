@@ -139,8 +139,17 @@ export function initSheets() {
   if (phone.matches && !menu.style.height) {
     menu.classList.add('peek');
     const grow = () => menu.classList.remove('peek');
-    menu.addEventListener('focusin', grow, { once: true });
-    menu.addEventListener('pointerdown', (e) => { if (!e.target.closest('.grip')) grow(); }, { once: true });
+    // Focus grows it only for text fields (typing needs room); focus on a button or
+    // summary comes with the press, before the click.
+    const growForField = (e) => {
+      if (!e.target.matches('input, select, textarea')) return;
+      grow();
+      menu.removeEventListener('focusin', growForField);
+    };
+    menu.addEventListener('focusin', growForField);
+    // On click, not pointerdown: growing moves the content, and a tap whose press and
+    // release land on different spots is lost (the first tap on a button did nothing).
+    menu.addEventListener('click', (e) => { if (!e.target.closest('.grip')) grow(); }, { once: true });
     window.addEventListener('plan-results', grow, { once: true });
   }
   let collapsed = null;
@@ -155,6 +164,32 @@ export function initSheets() {
       if (h > window.innerHeight - TOP_GAP) el.style.height = `${Math.max(MIN_HEIGHT, window.innerHeight - TOP_GAP)}px`;
     }
   });
+}
+
+/** Tabs (role="tablist"): click or arrow keys switch panels; the last one is remembered. */
+export function initTabs(list) {
+  const tabs = [...list.querySelectorAll('[role="tab"]')];
+  const select = (tab, focus = false) => {
+    for (const t of tabs) {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    }
+    if (focus) tab.focus();
+    remember(`tab:${list.id || list.getAttribute('aria-label')}`, tab.id);
+  };
+  list.addEventListener('click', (e) => { const t = e.target.closest('[role="tab"]'); if (t) select(t); });
+  list.addEventListener('keydown', (e) => {
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+    e.preventDefault();
+    select(tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length], true);
+  });
+  let saved = null;
+  try { saved = localStorage.getItem(`tab:${list.id || list.getAttribute('aria-label')}`); } catch {}
+  const start = tabs.find((t) => t.id === saved);
+  if (start) select(start);
 }
 
 /** Height of the screen covered by open sheets at the bottom (phones) or their right edge (wide screens). */

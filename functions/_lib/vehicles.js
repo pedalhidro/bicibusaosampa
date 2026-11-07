@@ -34,3 +34,31 @@ export function vehicleFilter(config, prefixes) {
     return vehicles;
   };
 }
+
+/**
+ * Picks the low-floor buses out of a /Posicao snapshot. `doors` maps the low door
+ * ('D' front, 'C' centre, 'T' rear) to prefixes (data/low-floor-fleet.json).
+ * Returns { fields, vehicles: [[prefix, line, sentido, lat, lon, door]], to: { "line|sentido": sign } },
+ * compact because there are thousands of them.
+ */
+const round5 = (x) => Math.round(x * 1e5) / 1e5; // ~1 m, plenty for a dot on a map
+
+export function lowFloorFilter(doors) {
+  const doorOf = new Map();
+  for (const [door, prefixes] of Object.entries(doors)) for (const p of prefixes) doorOf.set(String(p), door);
+
+  return function select(snapshot) {
+    const vehicles = [], to = {};
+    for (const line of snapshot.l ?? []) {
+      let any = false;
+      for (const v of line.vs ?? []) {
+        const door = doorOf.get(String(v.p));
+        if (!door) continue;
+        any = true;
+        vehicles.push([String(v.p), line.c, line.sl, round5(v.py), round5(v.px), door]);
+      }
+      if (any) to[`${line.c}|${line.sl}`] = line.sl === 1 ? line.lt0 : line.lt1;
+    }
+    return { fields: ['prefix', 'line', 'sentido', 'lat', 'lon', 'door'], vehicles, to };
+  };
+}

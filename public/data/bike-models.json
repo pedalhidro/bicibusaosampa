@@ -1,0 +1,70 @@
+{
+  "_comment": "Editado à mão. Estilos de rota de bicicleta do planejador, no formato dos custom models do GraphHopper (só a parte de prioridade, ver public/js/custom-model.js): cada regra multiplica a prioridade da rua; prioridade 0,5 faz a rua 'custar' o dobro na escolha do caminho, 0 tira a rua do caminho, acima de 1 a rua é preferida. Os tempos e kcal mostrados continuam reais. 'extends' começa pelas regras de outro estilo. 'preferences' são as opções marcáveis, cujas regras entram depois das do estilo. O estilo 'padrao' reproduz a tabela de conforto de streets.js (o teste confere).",
+  "default": "padrao",
+  "models": {
+    "padrao": {
+      "name": "Padrão (conforto)",
+      "description": "Prefere ciclovias e ruas calmas sem desviar muito; nas avenidas, só um pouco.",
+      "priority": [
+        { "if": "push || road_class == STEPS", "multiply_by": 1 },
+        { "else_if": "road_class == CYCLEWAY", "multiply_by": 1.25 },
+        { "else_if": "bike_infra", "multiply_by": 1.17647 },
+        { "else_if": "road_class == TERTIARY", "multiply_by": 0.90909 },
+        { "else_if": "road_class == SECONDARY", "multiply_by": 0.8 },
+        { "else_if": "road_class == PRIMARY", "multiply_by": 0.66667 },
+        { "else_if": "road_class == TRUNK", "multiply_by": 0.5 }
+      ]
+    },
+    "ciclovias": {
+      "name": "Ciclovias primeiro",
+      "description": "Faz desvios maiores para ficar em ciclovias, ciclofaixas e ruas calmas.",
+      "priority": [
+        { "if": "push || road_class == STEPS", "multiply_by": 0.8 },
+        { "else_if": "road_class == CYCLEWAY", "multiply_by": 2 },
+        { "else_if": "bike_infra", "multiply_by": 1.8 },
+        { "else_if": "road_class == TERTIARY", "multiply_by": 0.7 },
+        { "else_if": "road_class == SECONDARY", "multiply_by": 0.4 },
+        { "else_if": "road_class == PRIMARY", "multiply_by": 0.25 },
+        { "else_if": "road_class == TRUNK", "multiply_by": 0.1 }
+      ]
+    },
+    "plano": {
+      "name": "Menos subidas",
+      "description": "Como o padrão, mas contorna ladeiras: quanto mais íngreme, mais evita.",
+      "extends": "padrao",
+      "priority": [
+        { "if": "average_slope > 8", "multiply_by": 0.25 },
+        { "else_if": "average_slope > 5", "multiply_by": 0.5 },
+        { "else_if": "average_slope > 3", "multiply_by": 0.8 }
+      ]
+    },
+    "direto": {
+      "name": "Mais direto",
+      "description": "Sem preferência de rua: o caminho mais rápido (ou de menos esforço) que a bici pode fazer.",
+      "priority": []
+    }
+  },
+  "preferences": {
+    "avoidArterials": {
+      "name": "Evitar avenidas sem ciclovia",
+      "default": true,
+      "priority": [
+        { "if": "!push && (road_class == SECONDARY || road_class == PRIMARY || road_class == TRUNK) && !bike_infra", "multiply_by": 0.2 }
+      ]
+    },
+    "avoidTrunk": {
+      "name": "Fora de vias expressas (Marginais, 23 de Maio…)",
+      "default": false,
+      "priority": [
+        { "if": "road_class == TRUNK && !bike_infra", "multiply_by": 0 }
+      ]
+    },
+    "avoidSteep": {
+      "name": "Evitar ladeiras fortes (mais de 8%)",
+      "default": false,
+      "priority": [
+        { "if": "average_slope > 8", "multiply_by": 0.2 }
+      ]
+    }
+  }
+}
