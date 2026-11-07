@@ -18,6 +18,7 @@ npm test             # node --test: schedule rules, holidays, headings, lanes, b
 npm run build:data   # regenerate data files (`-- rail`, `-- bus`, `-- emtu`, `-- parking`, `-- terminals` or `-- fleet` for one)
 npm run build:tokens # design/tokens/ → public/tokens.css, public/js/tokens.js and the tables in DESIGN.md
 npm run build:icons  # design/icons/ → public/js/icons.js and the icons in index.html (icons:fetch copies new SVGs from the icon library)
+npm run build:app-icons # the menu mark → public/icons/icon-*.png (favicon, home screen, PWA)
 node scripts/suggest-lines.mjs [--write]   # compare live rack buses with the expected lines
 node scripts/plan.mjs --from=LAT,LON --to=LAT,LON [--at=…] [--power=suave] [--model=plano --prefs=avoidArterials] [--networks=sptrans,rail]   # try the trip planner
 ```
@@ -67,9 +68,12 @@ append `window.__map = map;`.
     across versions and re-checked daily. Locally the version is `dev`: no caching.
     Don't put the worker code in a Function module: the bundler injects `__name()`
     helpers that break it in the browser.
-  - `manifest.webmanifest`, `icons/icon-*.png`: PWA install and favicon, generated from
-    `assets/icon.jpg` (gitignored): full-bleed 180 for iOS, rounded 32/192/512 with
-    transparent corners, maskable 512 at 70 % on dark brown (`brand.splash`, the manifest's splash colour too).
+  - `manifest.webmanifest`, `icons/icon-*.png`: PWA install and favicon, built by
+    `npm run build:app-icons` from the menu mark (`design/icons/own/outline/climb-contours.svg`,
+    a climb crossing contour lines, inspired by Simujaules) in white on `brand.theme`:
+    rounded 32/192/512 with transparent corners, full-bleed 180 for iOS, maskable 512
+    with the mark inside the safe zone. `brand.splash` is the same teal. Rebuild them
+    whenever the mark or the brand colour changes.
   - `vendor/leaflet-rotate/`: leaflet-rotate 0.2.8 (GPL-3.0) as patched by Câmera
     Topográfica (steadier touch rotation and pinch anchor). Map rotation: two fingers
     on phones, Shift + wheel with a mouse; a compass button resets north.

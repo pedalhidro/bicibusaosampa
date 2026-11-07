@@ -278,20 +278,6 @@
           }
         }
       },
-      "brown": {
-        "900": {
-          "$value": {
-            "colorSpace": "srgb",
-            "components": [
-              0.2392,
-              0.1686,
-              0.1216
-            ],
-            "hex": "#3d2b1f"
-          },
-          "$description": "Fora da escala Tailwind: o marrom-escuro do ícone do app."
-        }
-      },
       "alpha": {
         "$description": "Cores translúcidas. O DTCG não tem modificador de opacidade, então cada uma é uma primitiva.",
         "white-97": {

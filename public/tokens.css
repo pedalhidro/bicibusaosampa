@@ -24,7 +24,6 @@
   --ref-color-teal-700: #0f766e;
   --ref-color-teal-950: #042f2e;
   --ref-color-cyan-700: #0e7490;
-  --ref-color-brown-900: #3d2b1f;
   --ref-color-alpha-white-97: rgb(255 255 255 / 0.97);
   --ref-color-alpha-stone-900-97: rgb(28 25 23 / 0.97);
   --ref-color-alpha-night-94: rgb(20 24 30 / 0.94);
@@ -184,7 +183,7 @@
   --map-label-badge: var(--ref-font-weight-700) var(--ref-font-size-10)/var(--ref-font-line-height-none) var(--ref-font-family-system);
   --map-label-badge-tracking: var(--ref-font-tracking-none);
   --brand-theme: var(--ref-color-teal-700);
-  --brand-splash: var(--ref-color-brown-900);
+  --brand-splash: var(--ref-color-teal-700);
   --ui-surface-page: var(--ref-color-white);
   --ui-surface-panel: var(--ref-color-alpha-white-97);
   --ui-surface-scrim: var(--ref-color-alpha-black-45);

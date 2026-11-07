@@ -234,6 +234,6 @@ export const tokens = {
   },
   "brand": {
     "theme": "#0f766e",
-    "splash": "#3d2b1f"
+    "splash": "#0f766e"
   }
 };

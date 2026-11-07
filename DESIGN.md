@@ -467,7 +467,7 @@ Não edite à mão: o teste confere.
 | Token | Valor | Para quê |
 |---|---|---|
 | `brand.theme` | `#0f766e` | theme-color: barra do navegador e do app instalado. |
-| `brand.splash` | `#3d2b1f` | Fundo da tela de abertura e do ícone maskable. |
+| `brand.splash` | `#0f766e` | Fundo da tela de abertura e do ícone maskable: o mesmo verde-azulado do ícone do app. |
 <!-- /tokens:brand -->
 
 ## Decisões

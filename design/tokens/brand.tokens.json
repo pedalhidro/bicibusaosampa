@@ -7,16 +7,20 @@
       "$description": "theme-color: barra do navegador e do app instalado.",
       "$extensions": {
         "info.bicisampa": {
-          "usage": ["theme-color"]
+          "usage": [
+            "theme-color"
+          ]
         }
       }
     },
     "splash": {
-      "$value": "{ref.color.brown.900}",
-      "$description": "Fundo da tela de abertura e do ícone maskable.",
+      "$value": "{ref.color.teal.700}",
+      "$description": "Fundo da tela de abertura e do ícone maskable: o mesmo verde-azulado do ícone do app.",
       "$extensions": {
         "info.bicisampa": {
-          "usage": ["background"]
+          "usage": [
+            "background"
+          ]
         }
       }
     }
