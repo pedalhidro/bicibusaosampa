@@ -37,6 +37,7 @@ async function get(url) {
 
 const wanted = { outline: new Set(), filled: new Set() };
 for (const i of Object.values(vocabulary.icons)) {
+  if (i.own) continue; // our own drawings live in design/icons/own/, not in a library
   wanted.outline.add(i.name);
   if (i.filled) wanted.filled.add(i.filled);
 }
@@ -50,7 +51,7 @@ files.set('source.json', JSON.stringify({ library: vocabulary.library, version: 
 
 // Copies of a library the vocabulary no longer uses, and icons it dropped, go.
 for (const entry of readdirSync(ICONS, { withFileTypes: true })) {
-  if (entry.isDirectory()) rmSync(join(ICONS, entry.name), { recursive: true });
+  if (entry.isDirectory() && entry.name !== 'own') rmSync(join(ICONS, entry.name), { recursive: true });
 }
 const dir = join(ICONS, vocabulary.library);
 for (const [path, text] of files) {

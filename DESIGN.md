@@ -181,6 +181,14 @@ trocar de biblioteca é mudar `library`, `version` e os nomes, e ensinar ao
 
 Lacuna conhecida: o Tabler não tem metrô, então `metro` usa o mesmo desenho de `train`.
 
+**Desenhos próprios.** Um significado pode ter um desenho nosso em vez do da biblioteca:
+`"own": true` no vocabulário, com o SVG em `design/icons/own/outline/<name>.svg` (e
+`filled/`, se houver). Hoje só o `menu`: uma subida cruzando curvas de nível, inspirada na
+marca do [Simujaules](https://simujaules.pedalhidrografi.co/). Siga o estilo da
+biblioteca (grade de 24, traço 2, pontas redondas, `currentColor`) e não use cor nenhuma:
+sem máscaras pretas e brancas, as sobreposições se resolvem na geometria (o traço de trás
+para antes do da frente). O `icons:fetch` não mexe em `own/`.
+
 O tamanho vem do CSS, pela escala `ui.size.icon.*`: `.icon` (20 px), `.icon-sm` (16 px),
 `.icon-lg` (24 px). A cor é a do texto (`currentColor`).
 

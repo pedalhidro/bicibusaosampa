@@ -1,7 +1,7 @@
 // The design system's rules (DESIGN.md). Each test is a rule marked [enforced] there.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { buildTokens, DESIGN_DOC, MODIFIERS, OUT_CSS, OUT_JS, resolveContexts, resolveScheme, resolveValue, SCHEMES, updateDesignDoc } from '../scripts/build-tokens.mjs';
@@ -281,13 +281,17 @@ test('every icon used is in the vocabulary, in a style it has, and every icon is
 
 test('the copied SVGs are exactly those of the vocabulary, from its library and version, with the licence', () => {
   const dir = `design/icons/${vocabulary.library}`;
-  assert.deepEqual(readdirSync(join(ROOT, 'design/icons')).sort(), [vocabulary.library, 'vocabulary.json'].sort(), 'only the current library is copied (npm run icons:fetch)');
+  const own = Object.values(vocabulary.icons).filter((i) => i.own);
+  assert.deepEqual(readdirSync(join(ROOT, 'design/icons')).sort(), [vocabulary.library, 'vocabulary.json', ...(own.length ? ['own'] : [])].sort(), 'only the current library is copied (npm run icons:fetch), plus our own drawings');
   assert.deepEqual(JSON.parse(read(`${dir}/source.json`)), { library: vocabulary.library, version: vocabulary.version }, 'copies are from another version (npm run icons:fetch)');
   assert.ok(read(`${dir}/LICENSE`).length > 0, `${dir}/LICENSE is missing`);
   for (const style of ['outline', 'filled']) {
     const key = style === 'outline' ? 'name' : 'filled';
-    const wanted = [...new Set(Object.values(vocabulary.icons).map((i) => i[key]).filter(Boolean))].map((n) => `${n}.svg`).sort();
-    assert.deepEqual(readdirSync(join(ROOT, dir, style)).sort(), wanted, `${dir}/${style} (npm run icons:fetch)`);
+    const names = (list) => [...new Set(list.map((i) => i[key]).filter(Boolean))].map((n) => `${n}.svg`).sort();
+    assert.deepEqual(readdirSync(join(ROOT, dir, style)).sort(), names(Object.values(vocabulary.icons).filter((i) => !i.own)), `${dir}/${style} (npm run icons:fetch)`);
+    const ownDir = join(ROOT, 'design/icons/own', style);
+    const ownFiles = existsSync(ownDir) ? readdirSync(ownDir).sort() : [];
+    assert.deepEqual(ownFiles, names(own), `design/icons/own/${style}: exactly our own drawings in the vocabulary`);
   }
 });
 

@@ -4,8 +4,9 @@
   "version": "3.49.0",
   "icons": {
     "menu": {
-      "name": "menu-2",
-      "description": "Abrir e fechar o menu."
+      "name": "climb-contours",
+      "own": true,
+      "description": "Abrir o menu (planejador e linhas). Desenho próprio, inspirado na marca do Simujaules: uma subida cruzando curvas de nível."
     },
     "layers": {
       "name": "stack-2",

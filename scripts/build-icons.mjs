@@ -45,11 +45,14 @@ function readSvg(file) {
 /** The vocabulary with every style's drawing: { meaning: { outline: {attrs, body}, filled? } }. */
 export function loadIcons() {
   const vocabulary = JSON.parse(readFileSync(VOCABULARY, 'utf8'));
-  const dir = join(ICONS, vocabulary.library);
-  return Object.fromEntries(Object.entries(vocabulary.icons).map(([meaning, { name, filled }]) => [meaning, {
-    outline: readSvg(join(dir, 'outline', `${name}.svg`)),
-    ...(filled ? { filled: readSvg(join(dir, 'filled', `${filled}.svg`)) } : {}),
-  }]));
+  return Object.fromEntries(Object.entries(vocabulary.icons).map(([meaning, { name, filled, own }]) => {
+    // `own: true`: our own drawing, in design/icons/own/, instead of the library's.
+    const dir = join(ICONS, own ? 'own' : vocabulary.library);
+    return [meaning, {
+      outline: readSvg(join(dir, 'outline', `${name}.svg`)),
+      ...(filled ? { filled: readSvg(join(dir, 'filled', `${filled}.svg`)) } : {}),
+    }];
+  }));
 }
 
 function svg(icons, name, extra = '', style = 'outline') {
