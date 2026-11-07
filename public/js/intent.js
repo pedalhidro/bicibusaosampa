@@ -31,11 +31,11 @@ const everyVisit = () => { try { return localStorage.getItem(EVERY) !== '0'; } c
 /**
  * setLayers(keys): show exactly these overlay layers (app.js TOGGLES keys).
  * openPanel(): the menu, with the planner open and the destination focused.
- * openLayers(): the layers sheet.
+ * closeSheets(): the menu and the layers sheet.
  * skipWelcome: true when the page opened on a shared trip (it answers the question,
  * and keeps the planner open).
  */
-export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = false }) {
+export function initIntent({ setLayers, openPanel, closeSheets, skipWelcome = false }) {
   const welcome = document.getElementById('welcome');
   const planSection = document.getElementById('plan-section');
   const planDetails = document.getElementById('plan-details');
@@ -54,14 +54,19 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
 
   /**
    * The menu for an intent: the planner, or (accessibility) the note in its place.
-   * Exploring starts with the planner folded, so map taps open popups instead of
-   * adding trip points (a closed planner ignores them); a shared trip keeps it open.
+   * Exploring starts with everything folded: both sheets closed and every section of
+   * the menu collapsed, so the map is clear and map taps open popups instead of adding
+   * trip points (a closed planner ignores them). A shared trip keeps the planner open.
    */
   function showMenu(intent) {
     const access = intent === 'access';
     planSection.hidden = access;
     accessNote.hidden = !access;
     planDetails.open = intent === 'bike' || (intent === 'explore' && skipWelcome);
+    if (intent === 'explore' && !skipWelcome) {
+      for (const d of document.querySelectorAll('#panel details')) d.open = false;
+      closeSheets();
+    }
     for (const r of radios) r.checked = r.value === intent;
   }
 
@@ -73,7 +78,6 @@ export function initIntent({ setLayers, openPanel, openLayers, skipWelcome = fal
     if (!(same && fromWelcome)) setLayers(INTENTS[intent].layers);
     showMenu(intent);
     if (intent === 'bike') openPanel();
-    else if (intent === 'explore' && fromWelcome) openLayers();
     if (!fromWelcome) toast(`Mapa ajustado: ${INTENTS[intent].label.toLowerCase()}`);
   }
 

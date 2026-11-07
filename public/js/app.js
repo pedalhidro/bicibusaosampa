@@ -1066,6 +1066,7 @@ function setLayers(keys) {
 
 // The welcome screen and the Ajustes tab (intent.js). A shared trip link already says
 // what the person wants: no welcome screen over it.
+const sharedTrip = /(^|[#&])p=/.test(location.hash);
 initIntent({
   setLayers,
   openPanel: () => {
@@ -1073,9 +1074,11 @@ initIntent({
     $('#plan-details').open = true;
     document.querySelector('#plan-stops li:last-child input')?.focus();
   },
-  openLayers: () => setSheetOpen('layers-panel', true),
-  skipWelcome: /(^|[#&])p=/.test(location.hash),
+  closeSheets: () => { setSheetOpen('panel', false); setSheetOpen('layers-panel', false); },
+  skipWelcome: sharedTrip,
 });
+// A shared trip is planned in the menu: show it, whatever was left closed last time.
+if (sharedTrip) setSheetOpen('panel', true);
 
 renderClock();
 renderRail();

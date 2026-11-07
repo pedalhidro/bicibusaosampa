@@ -51,8 +51,9 @@ append `window.__map = map;`.
     welcome dialog (not over a shared trip link) on the first visit and on every visit
     while "Mostrar esta tela nas próximas vezes" is ticked (default on; also in Ajustes;
     `welcomeEvery`), and from the ⧉ sheet's **Ajustes** tab. Picking the same use
-    again keeps the layers changed since: Explorar o entorno (default layers, layers sheet
-    open, planner folded unless a shared trip is opening), Chegar de bicicleta (planner
+    again keeps the layers changed since: Explorar o entorno (default layers; menu and
+    layers sheet closed and every menu section collapsed, unless a shared trip is
+    opening), Chegar de bicicleta (planner
     open, destination focused), Chegar com
     acessibilidade (map-only for now: stations, terminals and low-floor buses, bike
     layers off, a note instead of the planner). Choosing one sets the layers and the
