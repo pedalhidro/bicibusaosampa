@@ -4,7 +4,7 @@ import { headingOfMove, headingOnRoute, iconTransform } from './heading.js';
 import { DEFAULT_VIEW, initLocate } from './locate.js';
 import { offsetPolylineClass } from './offset.js';
 import { ACCESS, parkingStatus } from './parking.js';
-import { currentSpaces, freeText, LEVEL_LABEL, mountHistory, reportsSpaces, SIMULATED, spaceHistory, spaceLevel, spotId } from './spaces.js';
+import { currentSpaces, freeText, LEVEL_LABEL, mountHistory, SIMULATED, spaceHistory, spaceLevel } from './spaces.js';
 import { initIntent } from './intent.js';
 import { initPlanner } from './planner.js';
 import { railStatus as lineStatus } from './rail.js';
@@ -348,10 +348,11 @@ const railGeoPromise = getJson('data/rail.geojson').catch(() => ({ features: [] 
 const busGeoPromise = getJson('data/bus-routes.geojson').catch(() => ({ features: [] }));
 const emtuGeoPromise = getJson('data/emtu-routes.geojson').catch(() => ({ features: [] }));
 const terminalGeoPromise = getJson('data/bus-terminals.geojson').catch(() => ({ features: [] }));
-const [railConfig, busConfig, emtuConfig] = await Promise.all([
+const [railConfig, busConfig, emtuConfig, spacesConfig] = await Promise.all([
   getJson('data/rail-lines.json'),
   getJson('data/bike-buses.json'),
   getJson('data/emtu-seletivo.json').catch(() => ({ lines: [], rules: {} })),
+  getJson('data/bike-spaces.json').catch(() => ({ stations: [] })),
 ]);
 
 const state = {
@@ -366,15 +367,16 @@ const state = {
 
 // Official Metrô / CPTM symbols; interchanges between the two show both.
 const stationIcons = new Map();
-function stationIcon(modes) {
-  const key = modes.join('+') || 'metro';
+/** `counted`: { free, level } to write the free spaces of its bicicletário under the icon. */
+function stationIcon(modes, counted = null) {
+  const key = `${modes.join('+') || 'metro'}|${counted ? `${counted.free}${counted.level}` : ''}`;
   if (!stationIcons.has(key)) {
     const imgs = (modes.length ? modes : ['metro'])
       .map((m) => `<img src="icons/${m === 'train' ? 'cptm' : 'metro'}.svg" alt="">`).join('');
     const n = Math.max(1, modes.length);
     stationIcons.set(key, L.divIcon({
       className: 'station-icon',
-      html: imgs,
+      html: imgs + (counted ? `<span class="spaces-pill ${counted.level}">${counted.free}</span>` : ''),
       // Padded to a 32 px tap target around the 16 px symbols.
       iconSize: [16 * n + 2 * (n - 1) + 16, 32],
       iconAnchor: [(16 * n + 2 * (n - 1) + 16) / 2, 16],
@@ -403,6 +405,8 @@ function openLinePopup(line, latlng) {
   spotFocus.popup = popup;
 }
 const lineByRef = new Map(lines.map((l) => [l.ref, l]));
+const stationMarkers = new Map(); // station name -> marker (with .refs and .modes)
+const spacesByStation = new Map(spacesConfig.stations.map((s) => [s.station, s]));
 
 function addRailGeometry(railGeo) {
   for (const f of railGeo.features) {
@@ -421,15 +425,19 @@ function addRailGeometry(railGeo) {
       const [lon, lat] = f.geometry.coordinates;
       const refs = f.properties.refs.filter((r) => lineByRef.has(r));
       const modes = [...new Set(refs.map((r) => lineByRef.get(r).mode))].sort(); // metro before train
-      L.marker([lat, lon], { pane: 'stations', icon: stationIcon(modes), keyboard: false })
-        .bindTooltip(esc(f.properties.name), { direction: 'top', offset: [0, -8] })
-        .bindPopup(() => `<h3>${esc(f.properties.name)}</h3>${refs.map((r) => lineRow(lineByRef.get(r))).join('')}`)
-        .on('popupopen', (e) => focusSpot(refs.map(String), e.target))
+      const { name } = f.properties;
+      const marker = L.marker([lat, lon], { pane: 'stations', icon: stationIcon(modes), keyboard: false })
+        .bindTooltip(esc(name), { direction: 'top', offset: [0, -8] })
+        .bindPopup(() => `<h3>${esc(name)}</h3>${refs.map((r) => lineRow(lineByRef.get(r))).join('')}${spacesHtml(name)}`)
+        .on('popupopen', (e) => { focusSpot(refs.map(String), e.target); loadSpacesChart(e.popup, name); })
         .on('popupclose', () => focusSpot(null))
-        .addTo(stationLayer)
-        .refs = refs.map(String);
+        .addTo(stationLayer);
+      marker.refs = refs.map(String);
+      marker.modes = modes;
+      stationMarkers.set(name, marker);
     }
   }
+  refreshSpaces();
   // Every core above every casing: a neighbouring line's casing mustn't hide the
   // status dashes where tracks run side by side or cross.
   for (const line of lines) for (const t of line.tracks) t.bringToFront();
@@ -946,74 +954,36 @@ map.on('moveend overlayadd', () => {
 
 // Colour = can I leave my bike here now, and on what terms. Shape = kind: a circle
 // for a paraciclo (stands), a house for a bicicletário (covered, usually staffed).
-// A bicicletário that counts its free spaces (spaces.js) turns yellow when few are left
-// and orange when full, with the count under the icon, in the same colour: station
-// icons often cover the house, and the count has to tell on its own.
-const PARKING_COLORS = {
-  livre: MAP.parking.free, cadastro: MAP.parking.signup, pago: MAP.parking.paid, clientes: MAP.parking.customers,
-  few: MAP.parking.few, full: MAP.parking.full, closed: MAP.parking.closed,
-};
+const PARKING_COLORS = { livre: MAP.parking.free, cadastro: MAP.parking.signup, pago: MAP.parking.paid, clientes: MAP.parking.customers, closed: MAP.parking.closed };
 // A white inverted-U stand (the paraciclo symbol) in a circle or a house, outlined in
-// dark ink like the bus icons so green spots stand out on green bus routes. On yellow
-// and orange the stand is dark: white doesn't read there.
-const DARK_STAND = new Set(['few', 'full']);
+// dark ink like the bus icons so green spots stand out on green bus routes.
 const PARKING_SHAPES = {
   paraciclo: { size: 20, outline: '<circle cx="12" cy="12" r="10"/>', stand: 0 },
   bicicletario: { size: 25, outline: '<path d="M12 1.6 22.6 10.2V21a1.4 1.4 0 0 1-1.4 1.4H2.8A1.4 1.4 0 0 1 1.4 21V10.2Z"/>', stand: 1.6 },
 };
 // Closed spots also get a diagonal bar, so "closed" doesn't rely on red alone.
-const parkingSvg = (kind, fill, closed = false, standColor = MAP.icon.on) => {
+const parkingSvg = (kind, fill, closed = false) => {
   const { size, outline, stand } = PARKING_SHAPES[kind];
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
     <g fill="${fill}" stroke="${MAP.icon.ink}" stroke-width="1.6">${outline}</g>
-    <path d="M8.6 16.4V11.4a3.4 3.4 0 0 1 6.8 0v5M6.6 16.6h10.8" transform="translate(0 ${stand})" fill="none" stroke="${standColor}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M8.6 16.4V11.4a3.4 3.4 0 0 1 6.8 0v5M6.6 16.6h10.8" transform="translate(0 ${stand})" fill="none" stroke="${MAP.icon.on}" stroke-width="2.2" stroke-linecap="round"/>
     ${closed ? `<path d="M4.5 19.5 19.5 4.5" stroke="${MAP.icon.ink}" stroke-width="4.2" stroke-linecap="round"/><path d="M4.5 19.5 19.5 4.5" stroke="${MAP.icon.on}" stroke-width="2" stroke-linecap="round"/>` : ''}
   </svg>`;
 };
 for (const el of document.querySelectorAll('[data-parking-shape]')) el.innerHTML = parkingSvg(el.dataset.parkingShape, MAP.parking.customers);
 
 const parkingIcons = new Map();
-/** `free`: the count to write under the icon (bicicletários that report it), or null. */
-function parkingIcon(kind, colorKey, free = null) {
-  const key = `${kind}|${colorKey}|${free ?? ''}`;
+function parkingIcon(kind, colorKey) {
+  const key = `${kind}|${colorKey}`;
   if (!parkingIcons.has(key)) {
     parkingIcons.set(key, L.divIcon({
       className: 'parking-icon',
-      html: parkingSvg(kind, PARKING_COLORS[colorKey], colorKey === 'closed', DARK_STAND.has(colorKey) ? MAP.icon.ink : MAP.icon.on)
-        + (free == null ? '' : `<span class="parking-spaces${DARK_STAND.has(colorKey) ? ` ${colorKey}` : ''}">${free}</span>`),
+      html: parkingSvg(kind, PARKING_COLORS[colorKey], colorKey === 'closed'),
       iconSize: [36, 36], // tap target around the icon
       iconAnchor: [18, 18],
     }));
   }
   return parkingIcons.get(key);
-}
-
-// Free spaces by spotId, from the last refreshSpaces(); empty until then, or without a feed.
-let spaces = {};
-
-/** The free spaces of a spot that reports them, in its popup: the count, then the last 24 h. */
-function spacesHtml(p) {
-  const now = spaces[spotId(p)];
-  if (!now) return '';
-  const level = spaceLevel(now.free, now.capacity);
-  const text = level === 'ok' ? `<b>${freeText(now.free)}</b> de ${now.capacity}`
-    : `<b>${LEVEL_LABEL[level]}</b> · ${now.free} de ${now.capacity} vagas livres`;
-  return `<p><span class="dot inline" style="background:${PARKING_COLORS[level === 'ok' ? p.access : level]}"></span> ${text}</p>
-    <div class="spaces-chart" data-spaces-chart>Carregando as últimas 24 h…</div>
-    ${SIMULATED ? '<p class="meta source">Vagas livres: dados simulados, em teste</p>' : ''}`;
-}
-
-/** Fills the chart of an open parking popup (the history is fetched when it opens). */
-async function loadSpacesChart(popup, p) {
-  const el = popup.getElement()?.querySelector('[data-spaces-chart]');
-  if (!el) return;
-  try {
-    const series = await spaceHistory(p);
-    if (el.isConnected) mountHistory(el, series, p.capacity);
-  } catch (err) {
-    console.warn('free spaces history unavailable', err);
-    el.textContent = 'Sem histórico agora';
-  }
 }
 
 function parkingPopup(p) {
@@ -1029,7 +999,6 @@ function parkingPopup(p) {
     ${facts.length ? `<p class="first meta">${esc(facts.join(' · '))}</p>` : ''}
     <p><span class="dot inline" style="background:${PARKING_COLORS[p.access]}"></span> <b>${ACCESS[p.access].label}</b>${notes.length ? `<br>${esc(notes.join(' '))}` : ''}</p>
     ${s.detail ? `<p>${s.open === false ? '<span class="dot inline closed"></span> ' : ''}${esc(s.detail)}</p>` : ''}
-    ${spacesHtml(p)}
     <p class="meta source">Fonte: ${source}</p>`;
 }
 
@@ -1047,13 +1016,12 @@ function loadParking() {
         const marker = L.marker([lat, lon], { pane: 'parking', keyboard: false, icon: parkingIcon(props.kind, 'livre') })
           .bindTooltip(esc(props.name ?? (props.kind === 'bicicletario' ? 'Bicicletário' : 'Paraciclo')), { direction: 'top', offset: [0, -10] })
           .bindPopup(() => parkingPopup(props))
-          .on('popupopen', (e) => { focusSpot([], e.target); loadSpacesChart(e.popup, props); })
+          .on('popupopen', (e) => focusSpot([], e.target))
           .on('popupclose', () => focusSpot(null));
         parkingMarkers.push({ marker, props, layer: props.kind === 'bicicletario' ? bicicletarioLayer : paracicloLayer });
       }
       renderParking();
       showParkingInView();
-      refreshSpaces();
     })
     .catch((err) => console.warn('bike parking unavailable', err));
 }
@@ -1072,30 +1040,63 @@ function showParkingInView() {
 }
 map.on('moveend overlayadd', showParkingInView);
 
-/**
- * Redraws the parking markers that changed since the last call: opened or closed, or a
- * new count of free spaces. A closed one shows no count: nobody can park there now.
- */
+/** Recolours the parking markers that opened or closed since the last call. */
 function renderParking() {
   const now = new Date();
   for (const { marker, props } of parkingMarkers) {
-    const status = parkingStatus(props, now);
-    const free = status.open === false ? null : spaces[spotId(props)];
-    const level = free ? spaceLevel(free.free, free.capacity) : 'ok';
-    const icon = parkingIcon(props.kind, level === 'ok' ? status.colorKey : level, free?.free);
+    const icon = parkingIcon(props.kind, parkingStatus(props, now).colorKey);
     if (marker.options.icon !== icon) marker.setIcon(icon);
   }
 }
 
-/** Fetches the free spaces of the bicicletários that report them, while they're on the map. */
-let spacesBusy = false;
+// ---------------------------------------------------------------- free spaces
+
+// Stations whose bicicletário counts its free spaces (data/bike-spaces.json, spaces.js).
+// The count belongs to the station: a pill under its icon, green with room, yellow when
+// few are left, orange when full, and in its popup with the last 24 hours. It's bike
+// information, so it follows the Bicicletários toggle (and needs the stations shown).
+const SPACES_COLORS = { ok: MAP.parking.room, few: MAP.parking.few, full: MAP.parking.full };
+const HOURS_WITHIN_M = 150; // a station's bicicletário in the parking data, for its hours
+let spaces = {}; // by station name, from the last refreshSpaces(); empty without a feed
 let spacesAt = 0;
+let spacesBusy = false;
+const spacesShown = () => map.hasLayer(bicicletarioGroup) && map.hasLayer(stationGroup) && map.getZoom() >= PARKING_MIN_ZOOM;
+
+/**
+ * Open or closed, from the hours of the station's bicicletário in the parking data
+ * (the feed has none); null when there's none nearby or the parking isn't loaded.
+ */
+function spacesHours(counted, date = new Date()) {
+  const at = stationMarkers.get(counted.station)?.getLatLng();
+  if (!at || !parkingMarkers.length) return null;
+  counted.parking ??= parkingMarkers
+    .filter(({ props }) => props.kind === 'bicicletario')
+    .map(({ marker, props }) => ({ props, meters: at.distanceTo(marker.getLatLng()) }))
+    .filter((c) => c.meters <= HOURS_WITHIN_M)
+    .sort((a, b) => a.meters - b.meters)[0]?.props ?? false;
+  return counted.parking ? parkingStatus(counted.parking, date) : null;
+}
+
+/** Puts the count under each counted station, or takes it away: toggle off, or closed now. */
+function renderSpaces() {
+  const on = spacesShown();
+  const now = new Date();
+  for (const counted of spacesConfig.stations) {
+    const marker = stationMarkers.get(counted.station);
+    if (!marker) continue;
+    const s = on && spacesHours(counted, now)?.open !== false ? spaces[counted.station] : null;
+    const icon = stationIcon(marker.modes, s ? { free: s.free, level: spaceLevel(s.free, s.capacity) } : null);
+    if (marker.options.icon !== icon) marker.setIcon(icon);
+  }
+}
+
+/** Fetches the free spaces while they're shown; the parking data comes first, for the hours. */
 async function refreshSpaces() {
-  const spots = parkingMarkers.filter(({ props }) => reportsSpaces(props)).map(({ props }) => props);
-  if (!spots.length || !bicicletariosShown() || spacesBusy || document.hidden) return;
+  if (!spacesShown() || spacesBusy || document.hidden) return renderSpaces();
   spacesBusy = true;
   try {
-    spaces = await currentSpaces(spots);
+    await parkingLoading;
+    spaces = await currentSpaces(spacesConfig.stations);
     spacesAt = Date.now();
   } catch (err) {
     console.warn('free spaces unavailable', err);
@@ -1103,10 +1104,42 @@ async function refreshSpaces() {
   } finally {
     spacesBusy = false;
   }
-  renderParking();
+  renderSpaces();
 }
-// Back on the map after being hidden or zoomed out: don't wait for the next round.
-map.on('zoomend overlayadd', () => { if (Date.now() - spacesAt > SPACES_REFRESH_MS) refreshSpaces(); });
+// Shown again after being hidden or zoomed out: don't wait for the next round.
+map.on('zoomend overlayadd overlayremove', () => {
+  if (spacesShown() && Date.now() - spacesAt > SPACES_REFRESH_MS) refreshSpaces();
+  else renderSpaces();
+});
+
+/** The bicicletário of a counted station, in the station's popup: the count, then the last 24 h. */
+function spacesHtml(name) {
+  const counted = spacesByStation.get(name);
+  const now = spaces[name];
+  if (!counted || !now || !map.hasLayer(bicicletarioGroup)) return '';
+  const hours = spacesHours(counted);
+  const level = spaceLevel(now.free, now.capacity);
+  const text = level === 'ok' ? `<b>${freeText(now.free)}</b> de ${now.capacity}`
+    : `<b>${LEVEL_LABEL[level]}</b> · ${now.free} de ${now.capacity} vagas livres`;
+  return `<p class="spaces-title"><b>Bicicletário</b>${hours?.detail ? ` · ${hours.open === false ? '<span class="dot inline closed"></span> ' : ''}${esc(hours.detail)}` : ''}</p>
+    <p class="sub"><span class="dot inline" style="background:${SPACES_COLORS[level]}"></span> ${text}</p>
+    <div class="spaces-chart" data-spaces-chart>Carregando as últimas 24 h…</div>
+    ${SIMULATED ? '<p class="meta source">Vagas livres: dados simulados, em teste</p>' : ''}`;
+}
+
+/** Fills the chart of an open station popup (the history is fetched when it opens). */
+async function loadSpacesChart(popup, name) {
+  const el = popup.getElement()?.querySelector('[data-spaces-chart]');
+  const counted = spacesByStation.get(name);
+  if (!el || !counted) return;
+  try {
+    const series = await spaceHistory(counted);
+    if (el.isConnected) mountHistory(el, series, counted.capacity);
+  } catch (err) {
+    console.warn('free spaces history unavailable', err);
+    el.textContent = 'Sem histórico agora';
+  }
+}
 
 // ---------------------------------------------------------------- clock & panel
 
@@ -1255,7 +1288,7 @@ emtuGeoPromise.then((geo) => {
   addBusRoutes(geo);
   renderBuses();
 });
-setInterval(() => { renderClock(); renderRail(); renderParking(); }, CLOCK_REFRESH_MS);
+setInterval(() => { renderClock(); renderRail(); renderParking(); renderSpaces(); }, CLOCK_REFRESH_MS);
 setInterval(refreshLive, RAIL_REFRESH_MS);
 setInterval(refreshBuses, BUS_REFRESH_MS);
 setInterval(refreshLowFloor, BUS_REFRESH_MS);

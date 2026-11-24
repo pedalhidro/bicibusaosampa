@@ -328,8 +328,9 @@ código ainda não segue.
 ### Mapa
 
 - O status nunca depende só da cor: tracejado = fora do horário da bici, pontilhado =
-  fechado, barra diagonal = bicicletário fechado, número sob o ícone = vagas livres (o
-  amarelo de "poucas vagas" e o laranja de "lotado" vêm sempre com ele). **[revisão]**
+  fechado, barra diagonal = bicicletário fechado, número sob a estação = vagas livres
+  no bicicletário dela (o verde, o amarelo de "poucas vagas" e o laranja de "lotado"
+  vêm sempre com o número). **[revisão]**
 - Nada de `filter` ou `box-shadow` borrado em ícones do mapa: no celular cada um é
   repintado a cada quadro. Use contornos desenhados no SVG (`map.icon.ink`). **[revisão]**
 - Área de toque de pelo menos 44 px nos controles (`ui.size.touch`) e de 32 a 40 px
@@ -434,14 +435,15 @@ Não edite à mão: o teste confere.
 | `map.parking.signup` | `#2563eb` | Gratuito com cadastro no local (estações e terminais). |
 | `map.parking.paid` | `#db2777` | Pago. |
 | `map.parking.customers` | `#78716c` | Só clientes ou autorizados. |
-| `map.parking.few` | `#eab308` | Bicicletário que conta as vagas: restam poucas (10% ou menos). O suporte do ícone fica escuro, e o número de vagas embaixo vem na mesma cor. |
-| `map.parking.full` | `#f97316` | Bicicletário que conta as vagas: lotado, nenhuma vaga livre. O suporte do ícone fica escuro, e o 0 embaixo vem na mesma cor. |
+| `map.parking.room` | `#16a34a` | Bicicletário de estação que conta as vagas: há vagas. É a cor do número de vagas sob a estação e do trecho no gráfico das últimas 24 h. |
+| `map.parking.few` | `#eab308` | Bicicletário de estação que conta as vagas: restam poucas (10% ou menos). É a cor do número de vagas sob a estação e do trecho no gráfico das últimas 24 h. |
+| `map.parking.full` | `#f97316` | Bicicletário de estação que conta as vagas: lotado, nenhuma vaga livre. É a cor do 0 sob a estação e do trecho no gráfico das últimas 24 h. |
 | `map.parking.closed` | `#dc2626` | Fechado agora, pelo horário do OpenStreetMap. Vence as outras cores e ganha uma barra diagonal. |
 | `map.terminal.sptrans` | `#334155` | Terminal de ônibus urbano da SPTrans: o quadrado sob o ônibus com teto. |
 | `map.terminal.emtu` | `#0e7490` | Terminal metropolitano da EMTU: a mesma cor dos seletivos. |
 | `map.terminal.coach` | `#57534e` | Terminal rodoviário (Tietê, Barra Funda, Jabaquara). |
-| `map.icon.ink` | `#1c1917` | Contorno escuro dos ícones do mapa. Destaca o verde de um bicicletário sobre o verde de um itinerário, sem sombra (que pesa no celular). Também o suporte do bicicletário com poucas vagas ou lotado (o branco não lê sobre amarelo e laranja), e o número de vagas livres: fundo escuro quando há vagas, algarismos escuros sobre o amarelo e o laranja. |
-| `map.icon.on` | `#ffffff` | Símbolos e halos brancos: seta do ônibus, suporte do paraciclo, contorno das estações, texto dos rótulos da rota, número de vagas livres sob o bicicletário. ⚠️ contraste com `map.bus.usual.wait` abaixo de 3:1; contraste com `map.bus.offroute.wait` abaixo de 3:1. |
+| `map.icon.ink` | `#1c1917` | Contorno escuro dos ícones do mapa. Destaca o verde de um bicicletário sobre o verde de um itinerário, sem sombra (que pesa no celular). Também os algarismos e o contorno do número de vagas livres sob uma estação, sobre o verde, o amarelo e o laranja. |
+| `map.icon.on` | `#ffffff` | Símbolos e halos brancos: seta do ônibus, suporte do paraciclo, contorno das estações, texto dos rótulos da rota. ⚠️ contraste com `map.bus.usual.wait` abaixo de 3:1; contraste com `map.bus.offroute.wait` abaixo de 3:1. |
 | `map.location.accent` | `#2563eb` | Bolinha azul de "você está aqui" e o círculo de precisão. |
 | `map.compass.north` | `#dc2626` | Ponta norte da bússola. |
 | `map.plan.walk` | `#57534e` | A pé. |
@@ -462,7 +464,7 @@ Não edite à mão: o teste confere.
 | `map.label.weight.strong` | `800` | Código da linha e o total: precisam ler mesmo pequenos. |
 | `map.label.tracking.leg` | `0.5px` | Letras um pouco abertas: o contorno grosso fecha o espaço entre elas. |
 | `map.label.badge` | `700 10px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Número 1, 2… nos ícones de trecho quando há mais de uma condução do mesmo tipo. |
-| `map.label.spaces` | `700 12px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Número de vagas livres sob o ícone de um bicicletário que as conta. |
+| `map.label.spaces` | `700 12px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Número de vagas livres do bicicletário, sob o ícone da estação. |
 <!-- /tokens:map -->
 
 ### App (`brand`)

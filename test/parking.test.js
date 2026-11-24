@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { parseOpeningHours } from '../scripts/opening-hours.mjs';
 import { buildParking, fromGeoSampa, fromOsm, titleCase } from '../scripts/parking.mjs';
 import { parkingStatus } from '../public/js/parking.js';
-import { currentSpaces, historyChart, historySummary, levelRuns, reportsSpaces, spaceHistory, spaceLevel } from '../public/js/spaces.js';
+import { currentSpaces, historyChart, historySummary, levelRuns, spaceHistory, spaceLevel } from '../public/js/spaces.js';
 
 // São Paulo is UTC-3 all year.
 const sp = (iso) => new Date(`${iso}-03:00`);
@@ -91,17 +92,20 @@ test('parkingStatus says whether it is open now', () => {
   assert.equal(parkingStatus({ kind: 'paraciclo', access: 'livre' }).colorKey, 'livre');
 });
 
-// Free spaces at the bicicletários that count them (spaces.js). The numbers are
+// Free spaces at the station bicicletários that count them (spaces.js). The numbers are
 // simulated for now; these tests hold for the real feed too, except the last one.
-test('reportsSpaces picks the ViaQuatro and ViaMobilidade bicicletários with a capacity', () => {
-  const spot = { kind: 'bicicletario', capacity: 80, operator: 'ViaMobilidade' };
-  assert.ok(reportsSpaces(spot));
-  assert.ok(reportsSpaces({ ...spot, operator: 'Via Mobilidade' })); // as OSM has Grajaú and Autódromo
-  assert.ok(reportsSpaces({ ...spot, operator: 'ViaQuatro' }));
-  assert.ok(!reportsSpaces({ ...spot, operator: 'CPTM' }));
-  assert.ok(!reportsSpaces({ ...spot, operator: undefined }));
-  assert.ok(!reportsSpaces({ ...spot, kind: 'paraciclo' }));
-  assert.ok(!reportsSpaces({ ...spot, capacity: undefined }));
+test('every station in bike-spaces.json is one station of rail.geojson, on that line', () => {
+  const read = (file) => JSON.parse(readFileSync(new URL(`../public/data/${file}`, import.meta.url)));
+  const stations = read('rail.geojson').features.filter((f) => f.properties.kind === 'station').map((f) => f.properties);
+  const counted = read('bike-spaces.json').stations;
+  assert.ok(counted.length > 0);
+  assert.equal(new Set(counted.map((c) => c.station)).size, counted.length, 'a station is listed twice');
+  for (const c of counted) {
+    const found = stations.filter((s) => s.name === c.station);
+    assert.equal(found.length, 1, `"${c.station}": ${found.length} stations of that name in rail.geojson`);
+    assert.ok(found[0].refs.includes(c.line), `"${c.station}" isn't on line ${c.line}`);
+    assert.ok(Number.isInteger(c.capacity) && c.capacity > 0, `"${c.station}" needs a capacity`);
+  }
 });
 
 test('spaceLevel: full at zero, few at 10% of the spaces or 5, whichever is more', () => {
@@ -116,9 +120,9 @@ test('spaceLevel: full at zero, few at 10% of the spaces or 5, whichever is more
 });
 
 test('the 24 h history ends at the current count, in 15-minute steps, within the capacity', async () => {
-  const spot = { kind: 'bicicletario', capacity: 80, operator: 'ViaQuatro', osm: 'way/1' };
+  const spot = { station: 'Pinheiros', line: '4', capacity: 80 };
   const now = sp('2026-11-24T12:07');
-  const current = (await currentSpaces([spot], now))['way/1'];
+  const current = (await currentSpaces([spot], now)).Pinheiros;
   const series = await spaceHistory(spot, now);
   assert.equal(series.length, 97);
   assert.equal(series.at(-1).at - series[0].at, 24 * 3_600_000);
@@ -151,8 +155,8 @@ test('the chart colours each stretch by the level it arrives at', () => {
 });
 
 test('simulated spaces: a working day empties the bicicletário by midday, a Sunday does not', async () => {
-  const spot = { kind: 'bicicletario', capacity: 100, operator: 'ViaQuatro', osm: 'way/2' };
-  const free = async (iso) => (await currentSpaces([spot], sp(iso)))['way/2'].free;
+  const spot = { station: 'Moema', line: '5', capacity: 100 };
+  const free = async (iso) => (await currentSpaces([spot], sp(iso))).Moema.free;
   assert.ok(await free('2026-11-24T03:00') > 80); // Tuesday, before the first train
   assert.ok(await free('2026-11-24T12:00') < 60);
   assert.ok(await free('2026-11-29T12:00') > 60); // Sunday

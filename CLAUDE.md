@@ -175,16 +175,20 @@ append `window.__map = map;`.
     elevations from amora's baked graph (`telhas.pedalhidrografi.co/viario/`). Must
     stay under Cloudflare Pages' 25 MiB file limit; the build refuses otherwise.
     - `parking.js`: bike parking access labels and open/closed status.
-    - `spaces.js`: free spaces at the bicicletários that count them, for now the
-      ViaQuatro and ViaMobilidade ones (Motiva, formerly CCR; `reportsSpaces()`): the
+    - `spaces.js`: free spaces at the station bicicletários that count them, for now
+      the ViaQuatro and ViaMobilidade ones (Motiva, formerly CCR). The count belongs to
+      the **station**, not to the parking marker, as in the operator's feed. It has the
       level rule (`spaceLevel()`: full at 0, few at ≤ 10% of the capacity or ≤ 5) and
-      the popup's 24 h chart (inline SVG coloured by level, a crosshair readout). **The numbers are
-      simulated** (`SIMULATED`; deterministic per spot and 15-minute step, São Paulo
-      time) until the operator's feed is integrated: that replaces the bodies of
-      `currentSpaces()` (all spots, polled every 60 s while bicicletários are shown)
-      and `spaceHistory()` (one spot, when its popup opens), both already async. The
+      the popup's 24 h chart (inline SVG coloured by level, a crosshair readout). **The
+      numbers are simulated** (`SIMULATED`; deterministic per station and 15-minute
+      step, São Paulo time) until the feed is integrated: that replaces the bodies of
+      `currentSpaces()` (all stations, polled every 60 s while shown) and
+      `spaceHistory()` (one station, when its popup opens), both already async. The
       popup, the legend and the Info tab say the data is simulated; keep that until
       the real feed is in.
+  - `data/bike-spaces.json`: **hand-edited** list of the stations whose bicicletário
+    counts its spaces: `station` (the name in rail.geojson; a test checks it resolves
+    to exactly one station on that `line`) and `capacity` (from OSM).
   - `data/bus-terminals.geojson`: **generated** (`-- terminals`, after `parking`) from
     GeoSampa `geoportal:terminal_onibus` (the source of truth for terminals, per the
     maintainer; don't patch in OSM ones) (SPTrans urban, EMTU metropolitan and coach
@@ -358,14 +362,16 @@ it). The rules below are what the colours *mean*; the tokens hold the values.
   (from zoom 14), with a white inverted-U stand and a dark outline. Colour: green =
   free, no sign-up; blue = free with sign-up; pink = paid; grey = customers only;
   red = closed now (overrides the others).
-- **Free spaces** (bicicletários that count them, `spaces.js`): the count in a pill
-  under the house. With room, the house keeps its access colour and the pill is dark;
-  yellow house and pill = few left, orange = full (`map.parking.few`, `.full`), both
-  with a dark stand and dark figures (white doesn't read there). The pill carries the
-  colour too because station icons often cover the house. Closed: red and slashed as
-  usual, no count. The popup has the count and the last 24 h as a chart, each stretch
-  in the colour of its level (blue, yellow, orange; a key appears when spaces ran
-  short, and the readout names the level).
+- **Free spaces** (stations in `bike-spaces.json`, `spaces.js`): the count of the
+  station's bicicletário in a pill under the **station** icon, dark figures on the
+  level's colour: green = room, yellow = few left, orange = full (`map.parking.room`,
+  `.few`, `.full`). The station's popup has a "Bicicletário" block: hours, the count
+  and the last 24 h as a chart, each stretch in its level's colour (a key appears when
+  spaces ran short, and the readout names the level). It's bike information: shown
+  only with the Bicicletários toggle on (and the stations shown), so the accessibility
+  intent has none. No pill while the bicicletário is closed (hours from the parking
+  spot within 150 m of the station). The bicicletário's own icon and popup don't
+  carry the count (moved to the station 2026-11, at the maintainer's request).
 - **The parking popup** shows "Com cadastro" without the sentence explaining the
   sign-up (removed 2026-11 by the maintainer); a terminal's popup still has it.
 - **Bus terminals:** a bus under a roof on a rounded square, coloured by operator

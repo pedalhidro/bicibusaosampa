@@ -1,0 +1,25 @@
+{
+  "_comment": [
+    "Estações cujo bicicletário conta as vagas livres: as da ViaQuatro (linha 4) e da ViaMobilidade (linhas 5 e 9).",
+    "O mapa mostra a contagem embaixo do ícone da estação e no popup dela (public/js/spaces.js). Editado à mão.",
+    "`station` é o nome da estação em rail.geojson (um teste confere); `line`, a linha do bicicletário; `capacity`, o total de vagas (do OpenStreetMap).",
+    "Por enquanto os números são simulados: quando a integração com a operadora entrar, cada estação ganha aqui o código que ela tem no feed."
+  ],
+  "stations": [
+    {"station": "Butantã", "line": "4", "capacity": 149},
+    {"station": "Fradique Coutinho", "line": "4", "capacity": 86},
+    {"station": "Pinheiros", "line": "4", "capacity": 117},
+    {"station": "São Paulo – Morumbi", "line": "4", "capacity": 80},
+    {"station": "AACD – Servidor", "line": "5", "capacity": 36},
+    {"station": "Alto da Boa Vista", "line": "5", "capacity": 126},
+    {"station": "Borba Gato", "line": "5", "capacity": 84},
+    {"station": "Brooklin", "line": "5", "capacity": 30},
+    {"station": "Campo Belo", "line": "5", "capacity": 144},
+    {"station": "Eucaliptos", "line": "5", "capacity": 92},
+    {"station": "Hospital São Paulo", "line": "5", "capacity": 30},
+    {"station": "Moema", "line": "5", "capacity": 68},
+    {"station": "Santa Cruz", "line": "5", "capacity": 80},
+    {"station": "Autódromo", "line": "9", "capacity": 261},
+    {"station": "Grajaú", "line": "9", "capacity": 178}
+  ]
+}

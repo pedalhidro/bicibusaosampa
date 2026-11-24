@@ -49,11 +49,13 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
   - ⚪ cinza: só clientes ou autorizados
   - 🔴 vermelho: fechado agora, pelo horário informado no OpenStreetMap
 
-  Nos bicicletários da ViaQuatro e da ViaMobilidade, o número embaixo do ícone é
-  quantas vagas estão livres agora. O ícone e o número ficam 🟡 amarelos quando restam
-  poucas vagas (10% ou menos) e 🟠 laranja quando lotou, e o popup traz o gráfico das
-  vagas livres nas últimas 24 horas. **Por enquanto esses números são simulados**, em
-  teste, até a integração com a operadora; o app avisa isso no popup e na legenda.
+  Nas estações da ViaQuatro e da ViaMobilidade com bicicletário, o número embaixo do
+  ícone da estação é quantas vagas estão livres agora: 🟢 verde quando há vagas, 🟡
+  amarelo quando restam poucas (10% ou menos) e 🟠 laranja quando lotou. O popup da
+  estação traz o horário do bicicletário e o gráfico das vagas livres nas últimas 24
+  horas. O número aparece com a camada Bicicletários ligada e some quando o
+  bicicletário está fechado. **Por enquanto esses números são simulados**, em teste,
+  até a integração com a operadora; o app avisa isso no popup e na legenda.
 
   Estacionamentos privados ficam de fora. O popup mostra operador, vagas, se é
   coberto, até quando fica aberto e o link para corrigir os dados no OpenStreetMap.

@@ -184,6 +184,7 @@ export const tokens = {
       "signup": "#2563eb",
       "paid": "#db2777",
       "customers": "#78716c",
+      "room": "#16a34a",
       "few": "#eab308",
       "full": "#f97316",
       "closed": "#dc2626"

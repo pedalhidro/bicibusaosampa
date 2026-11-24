@@ -1,6 +1,8 @@
-// Free spaces at the bicicletários that count them: for now the ones at ViaQuatro and
-// ViaMobilidade stations (Motiva, formerly CCR). The map shows the count under the icon,
-// colours the icon when spaces run out, and the popup charts the last 24 hours.
+// Free spaces at the station bicicletários that count them: for now those of ViaQuatro
+// and ViaMobilidade (Motiva, formerly CCR). The count belongs to the station, as in the
+// operator's feed: the stations are listed in data/bike-spaces.json ({ station, line,
+// capacity }), the map writes the count under the station's icon, coloured when spaces
+// run out, and the station's popup charts the last 24 hours.
 //
 // THE NUMBERS ARE SIMULATED for now (SIMULATED below): there is no feed yet. The real
 // one replaces the bodies of currentSpaces() and spaceHistory() and nothing else; both
@@ -11,14 +13,6 @@ import { spParts } from './time.js';
 
 /** True while the numbers are made up: the interface says so wherever it shows them. */
 export const SIMULATED = true;
-
-const OPERATORS = /via ?(quatro|mobilidade)/i; // OSM has "ViaMobilidade" and "Via Mobilidade"
-
-/** Whether this parking spot (bike-parking.geojson properties) reports its free spaces. */
-export const reportsSpaces = (p) => p.kind === 'bicicletario' && p.capacity > 0 && OPERATORS.test(p.operator ?? '');
-
-/** What a spot is known by in the replies below. */
-export const spotId = (p) => p.osm ?? p.name;
 
 // "Few" = 10% of the spaces or less, and never more than this many at a small one.
 const FEW_SHARE = 0.1;
@@ -58,14 +52,14 @@ const sigmoid = (x) => 1 / (1 + Math.exp(-x));
 // spot has its own peak (some overflow: those are the full ones), its own timing and a
 // slow wobble. Times are São Paulo's.
 function simulatedFree(spot, ms) {
-  const id = spotId(spot);
+  const id = spot.station;
   const sample = Math.floor(ms / SAMPLE_MS);
   const p = spParts(new Date(sample * SAMPLE_MS));
   const workday = dayType(p.iso) === 'weekday';
   const minutes = p.minutes + (unit(`${id}|shift`) - 0.5) * 60;
   const [arrive, leave] = workday ? [7.25 * 60, 18.25 * 60] : [9.5 * 60, 16 * 60];
   const filled = sigmoid((minutes - arrive) / 35) * (1 - sigmoid((minutes - leave) / 50));
-  const peak = (0.5 + 0.56 * unit(`${id}|peak`)) * (workday ? 1 : 0.35);
+  const peak = (0.55 + 0.6 * unit(`${id}|peak`)) * (workday ? 1 : 0.35);
   const overnight = 0.03 + 0.07 * unit(`${id}|night`);
   const hour = Math.floor(sample / 4), part = (sample % 4) / 4;
   const wobble = unit(`${id}|${hour}`) * (1 - part) + unit(`${id}|${hour + 1}`) * part - 0.5;
@@ -74,15 +68,15 @@ function simulatedFree(spot, ms) {
 }
 
 /**
- * The free spaces right now at each of `spots` (parking properties):
- * { [spotId]: { free, capacity, at } }, `at` in ms since the epoch.
+ * The free spaces right now at each of `stations` (entries of data/bike-spaces.json):
+ * { [station name]: { free, capacity, at } }, `at` in ms since the epoch.
  */
-export async function currentSpaces(spots, now = new Date()) {
+export async function currentSpaces(stations, now = new Date()) {
   const at = Math.floor(now.getTime() / SAMPLE_MS) * SAMPLE_MS;
-  return Object.fromEntries(spots.map((s) => [spotId(s), { free: simulatedFree(s, at), capacity: s.capacity, at }]));
+  return Object.fromEntries(stations.map((s) => [s.station, { free: simulatedFree(s, at), capacity: s.capacity, at }]));
 }
 
-/** The last 24 hours at one spot, oldest first: [{ at, free }], ending at the current count. */
+/** The last 24 hours at one station, oldest first: [{ at, free }], ending at the current count. */
 export async function spaceHistory(spot, now = new Date()) {
   const last = Math.floor(now.getTime() / SAMPLE_MS);
   return Array.from({ length: HISTORY_SAMPLES + 1 }, (_, i) => {
@@ -139,7 +133,7 @@ export function levelRuns(series, capacity) {
 
 /**
  * The chart as an SVG string: free spaces (0 to capacity) over the series' time span,
- * each stretch in the colour of its level, like the icon on the map.
+ * each stretch in the colour of its level, like the count on the map.
  */
 export function historyChart(series, capacity) {
   const { x, y } = scales(series, capacity);

@@ -272,10 +272,11 @@ h2 { margin: var(--ui-space-gap-lg) 0 var(--ui-space-gap-sm); font: var(--ui-typ
   border: 1.5px solid var(--map-icon-ink);
 }
 .legend.shapes { margin-top: var(--ui-space-gap-xs); }
+.legend-note { margin: var(--ui-space-gap-sm) 0 0; color: var(--ui-content-secondary); font: var(--ui-type-body-sm); }
 .terminal-swatch { flex: none; display: inline-block; width: var(--ui-size-icon-sm); height: var(--ui-size-icon-sm); border-radius: var(--ui-radius-small); border: 1.5px solid var(--map-icon-ink); }
 .dot.low-floor { background: var(--map-bus-low-floor); border-color: var(--map-icon-on); outline: 1px solid var(--map-bus-low-floor); }
-.legend.shapes [data-parking-shape], .parking-spaces-key { flex: none; display: flex; justify-content: center; width: 25px; }
-.parking-spaces-key .parking-spaces { position: static; translate: none; }
+.legend.shapes [data-parking-shape], .spaces-pill-key { flex: none; display: flex; justify-content: center; width: 25px; }
+.spaces-pill-key .spaces-pill { position: static; translate: none; }
 
 /* ------------------------------------------------------------ menu sections */
 
@@ -376,28 +377,28 @@ details[open] > summary > .summary-chevron { transform: rotate(180deg); }
 }
 /* No CSS shadows on map icons: phones redraw every one of them on each pan and zoom. */
 .parking-icon svg { display: block; overflow: visible; }
-/* Free spaces under a bicicletário that counts them (spaces.js): white on the icons'
-   dark ink, with a plain white ring instead of a shadow. Hangs below the tap box, so
-   the house stays on its spot. */
-.parking-spaces {
+/* Free spaces at a station's bicicletário (spaces.js), under the station's icon: dark
+   figures on the colour of the level (green with room, yellow when few are left, orange
+   when full), with a plain dark ring instead of a shadow. Hangs from the
+   bottom of the tap box (Leaflet positions the marker absolutely, which makes it the
+   pill's containing block), so the logos stay on their spot. */
+.spaces-pill {
   position: absolute;
-  top: calc(100% - var(--ui-space-gap-xs));
+  top: calc(100% - var(--ui-space-gap-sm) + var(--ui-space-gap-2xs));
   left: 50%;
   translate: -50% 0;
   min-width: var(--ui-size-icon-sm);
   padding: var(--ui-space-inset-2xs) var(--ui-space-inset-xs);
   border-radius: var(--ui-radius-full);
-  background: var(--map-icon-ink);
-  color: var(--map-icon-on);
+  background: var(--map-parking-room);
+  color: var(--map-icon-ink);
   font: var(--map-label-spaces);
   font-variant-numeric: tabular-nums;
   text-align: center;
-  box-shadow: 0 0 0 1px var(--map-icon-on);
+  box-shadow: 0 0 0 1.5px var(--map-icon-ink);
 }
-/* Few spaces left, or none: the icon's yellow or orange, dark figures and ring. */
-.parking-spaces.few, .parking-spaces.full { color: var(--map-icon-ink); box-shadow: 0 0 0 1.5px var(--map-icon-ink); }
-.parking-spaces.few { background: var(--map-parking-few); }
-.parking-spaces.full { background: var(--map-parking-full); }
+.spaces-pill.few { background: var(--map-parking-few); }
+.spaces-pill.full { background: var(--map-parking-full); }
 
 .leaflet-popup-content { font: var(--ui-type-body-sm); }
 .leaflet-popup-content h3 { margin: 0 0 var(--ui-space-gap-xs); font: var(--ui-type-heading); }
@@ -409,9 +410,11 @@ details[open] > summary > .summary-chevron { transform: rotate(180deg); }
 .leaflet-popup-content .meta { color: var(--ui-content-secondary); }
 .leaflet-popup-content .source { font: var(--ui-type-caption); }
 
-/* Free spaces over the last 24 h, in a bicicletário's popup (spaces.js). The popup is
+/* The bicicletário of a station in the station's popup (spaces.js): a title under the
+   line rows, the count, and the free spaces over the last 24 h. The popup is
    white in both colour schemes, so the chart uses the map's colours and the popup's
    own text colour, not the interface's. The height is held while the chart loads. */
+.leaflet-popup-content .spaces-title { margin: var(--ui-space-gap-md) 0 0; }
 .spaces-chart { min-height: 120px; margin: var(--ui-space-gap-sm) 0 0; }
 .spaces-chart svg { display: block; touch-action: none; cursor: crosshair; }
 .spaces-chart .grid, .spaces-chart .rule { fill: none; stroke: currentColor; opacity: 0.2; }
@@ -420,12 +423,12 @@ details[open] > summary > .summary-chevron { transform: rotate(180deg); }
 .spaces-chart .area { opacity: 0.14; }
 .spaces-chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .spaces-chart .now { stroke: var(--map-icon-on); stroke-width: 2; }
-/* Each stretch in the colour of its level, as on the map: with spaces, few left, full.
+/* Each stretch in the colour of its level, as on the map: with room, few left, full.
    Yellow and orange are pale on white, so those stretches are thicker and fuller. */
-.spaces-chart :is(.area, .now).ok, .spaces-key .dot.ok { fill: var(--map-parking-signup); background: var(--map-parking-signup); }
+.spaces-chart :is(.area, .now).ok, .spaces-key .dot.ok { fill: var(--map-parking-room); background: var(--map-parking-room); }
 .spaces-chart :is(.area, .now).few, .spaces-key .dot.few { fill: var(--map-parking-few); background: var(--map-parking-few); }
 .spaces-chart :is(.area, .now).full, .spaces-key .dot.full { fill: var(--map-parking-full); background: var(--map-parking-full); }
-.spaces-chart .line.ok { stroke: var(--map-parking-signup); }
+.spaces-chart .line.ok { stroke: var(--map-parking-room); }
 .spaces-chart .line.few { stroke: var(--map-parking-few); }
 .spaces-chart .line.full { stroke: var(--map-parking-full); }
 .spaces-chart :is(.line.few, .line.full) { stroke-width: 3; }
