@@ -49,6 +49,12 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
   - ⚪ cinza: só clientes ou autorizados
   - 🔴 vermelho: fechado agora, pelo horário informado no OpenStreetMap
 
+  Nos bicicletários da ViaQuatro e da ViaMobilidade, o número embaixo do ícone é
+  quantas vagas estão livres agora. O ícone e o número ficam 🟡 amarelos quando restam
+  poucas vagas (10% ou menos) e 🟠 laranja quando lotou, e o popup traz o gráfico das
+  vagas livres nas últimas 24 horas. **Por enquanto esses números são simulados**, em
+  teste, até a integração com a operadora; o app avisa isso no popup e na legenda.
+
   Estacionamentos privados ficam de fora. O popup mostra operador, vagas, se é
   coberto, até quando fica aberto e o link para corrigir os dados no OpenStreetMap.
 - **Terminais de ônibus** (GeoSampa): os da SPTrans (cinza-azulado), os
@@ -61,8 +67,9 @@ Mapa ao vivo dos ônibus e trilhos da Grande São Paulo que levam bicicleta, em
 
 O botão de camadas, no canto superior direito, tem quatro abas: Camadas, Legenda, Ajustes e Info (o que é o app e de onde vêm os dados). Em **Camadas**: o mapa
 de fundo (OpenStreetMap, OpenStreetMap claro, Positron e Voyager da CARTO, ou nenhum), o topográfico colorido
-por cima, e liga e desliga trilhos, estações e terminais, itinerários, ônibus ao vivo,
-bicicletários e os ônibus de piso baixo. Em **Legenda**: o que cada
+por cima, e liga e desliga trilhos, estações e terminais, os ônibus da SPTrans
+(itinerários e ônibus ao vivo), os da EMTU, bicicletários, paraciclos e os ônibus de
+piso baixo. Os da EMTU, os paraciclos e os de piso baixo começam desligados. Em **Legenda**: o que cada
 cor e forma quer dizer. No canto do mapa ficam só os créditos obrigatórios (OpenStreetMap e, com os mapas da
 CARTO, a CARTO), ao lado de um resumo do que está ao vivo (toque nele para ver as linhas).
 

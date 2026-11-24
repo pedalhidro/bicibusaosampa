@@ -274,7 +274,8 @@ h2 { margin: var(--ui-space-gap-lg) 0 var(--ui-space-gap-sm); font: var(--ui-typ
 .legend.shapes { margin-top: var(--ui-space-gap-xs); }
 .terminal-swatch { flex: none; display: inline-block; width: var(--ui-size-icon-sm); height: var(--ui-size-icon-sm); border-radius: var(--ui-radius-small); border: 1.5px solid var(--map-icon-ink); }
 .dot.low-floor { background: var(--map-bus-low-floor); border-color: var(--map-icon-on); outline: 1px solid var(--map-bus-low-floor); }
-.legend.shapes [data-parking-shape] { flex: none; display: flex; justify-content: center; width: 25px; }
+.legend.shapes [data-parking-shape], .parking-spaces-key { flex: none; display: flex; justify-content: center; width: 25px; }
+.parking-spaces-key .parking-spaces { position: static; translate: none; }
 
 /* ------------------------------------------------------------ menu sections */
 
@@ -375,6 +376,28 @@ details[open] > summary > .summary-chevron { transform: rotate(180deg); }
 }
 /* No CSS shadows on map icons: phones redraw every one of them on each pan and zoom. */
 .parking-icon svg { display: block; overflow: visible; }
+/* Free spaces under a bicicletário that counts them (spaces.js): white on the icons'
+   dark ink, with a plain white ring instead of a shadow. Hangs below the tap box, so
+   the house stays on its spot. */
+.parking-spaces {
+  position: absolute;
+  top: calc(100% - var(--ui-space-gap-xs));
+  left: 50%;
+  translate: -50% 0;
+  min-width: var(--ui-size-icon-sm);
+  padding: var(--ui-space-inset-2xs) var(--ui-space-inset-xs);
+  border-radius: var(--ui-radius-full);
+  background: var(--map-icon-ink);
+  color: var(--map-icon-on);
+  font: var(--map-label-spaces);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  box-shadow: 0 0 0 1px var(--map-icon-on);
+}
+/* Few spaces left, or none: the icon's yellow or orange, dark figures and ring. */
+.parking-spaces.few, .parking-spaces.full { color: var(--map-icon-ink); box-shadow: 0 0 0 1.5px var(--map-icon-ink); }
+.parking-spaces.few { background: var(--map-parking-few); }
+.parking-spaces.full { background: var(--map-parking-full); }
 
 .leaflet-popup-content { font: var(--ui-type-body-sm); }
 .leaflet-popup-content h3 { margin: 0 0 var(--ui-space-gap-xs); font: var(--ui-type-heading); }
@@ -385,6 +408,30 @@ details[open] > summary > .summary-chevron { transform: rotate(180deg); }
 .leaflet-popup-content p.sub { margin: var(--ui-space-gap-2xs) 0 0; }
 .leaflet-popup-content .meta { color: var(--ui-content-secondary); }
 .leaflet-popup-content .source { font: var(--ui-type-caption); }
+
+/* Free spaces over the last 24 h, in a bicicletário's popup (spaces.js). The popup is
+   white in both colour schemes, so the chart uses the map's colours and the popup's
+   own text colour, not the interface's. The height is held while the chart loads. */
+.spaces-chart { min-height: 120px; margin: var(--ui-space-gap-sm) 0 0; }
+.spaces-chart svg { display: block; touch-action: none; cursor: crosshair; }
+.spaces-chart .grid, .spaces-chart .rule { fill: none; stroke: currentColor; opacity: 0.2; }
+.spaces-chart .rule { opacity: 0.6; }
+.spaces-chart .axis { fill: currentColor; opacity: 0.75; font: var(--ui-type-caption); font-variant-numeric: tabular-nums; }
+.spaces-chart .area { opacity: 0.14; }
+.spaces-chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spaces-chart .now { stroke: var(--map-icon-on); stroke-width: 2; }
+/* Each stretch in the colour of its level, as on the map: with spaces, few left, full.
+   Yellow and orange are pale on white, so those stretches are thicker and fuller. */
+.spaces-chart :is(.area, .now).ok, .spaces-key .dot.ok { fill: var(--map-parking-signup); background: var(--map-parking-signup); }
+.spaces-chart :is(.area, .now).few, .spaces-key .dot.few { fill: var(--map-parking-few); background: var(--map-parking-few); }
+.spaces-chart :is(.area, .now).full, .spaces-key .dot.full { fill: var(--map-parking-full); background: var(--map-parking-full); }
+.spaces-chart .line.ok { stroke: var(--map-parking-signup); }
+.spaces-chart .line.few { stroke: var(--map-parking-few); }
+.spaces-chart .line.full { stroke: var(--map-parking-full); }
+.spaces-chart :is(.line.few, .line.full) { stroke-width: 3; }
+.spaces-chart :is(.area.few, .area.full) { opacity: 0.4; }
+.leaflet-popup-content .spaces-key { display: flex; flex-wrap: wrap; gap: var(--ui-space-gap-2xs) var(--ui-space-gap-sm); margin: var(--ui-space-gap-2xs) 0 0; font: var(--ui-type-caption); }
+.leaflet-popup-content .spaces-readout { margin: var(--ui-space-gap-2xs) 0 0; font: var(--ui-type-caption); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------ trip planner */
 

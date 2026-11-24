@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { parseOpeningHours } from '../scripts/opening-hours.mjs';
 import { buildParking, fromGeoSampa, fromOsm, titleCase } from '../scripts/parking.mjs';
 import { parkingStatus } from '../public/js/parking.js';
+import { currentSpaces, historyChart, historySummary, levelRuns, reportsSpaces, spaceHistory, spaceLevel } from '../public/js/spaces.js';
 
 // São Paulo is UTC-3 all year.
 const sp = (iso) => new Date(`${iso}-03:00`);
@@ -88,4 +89,71 @@ test('parkingStatus says whether it is open now', () => {
   assert.match(parkingStatus({ kind: 'bicicletario', access: 'cadastro' }).detail, /estação ou terminal/);
   assert.equal(parkingStatus({ kind: 'paraciclo', access: 'livre' }).open, null);
   assert.equal(parkingStatus({ kind: 'paraciclo', access: 'livre' }).colorKey, 'livre');
+});
+
+// Free spaces at the bicicletários that count them (spaces.js). The numbers are
+// simulated for now; these tests hold for the real feed too, except the last one.
+test('reportsSpaces picks the ViaQuatro and ViaMobilidade bicicletários with a capacity', () => {
+  const spot = { kind: 'bicicletario', capacity: 80, operator: 'ViaMobilidade' };
+  assert.ok(reportsSpaces(spot));
+  assert.ok(reportsSpaces({ ...spot, operator: 'Via Mobilidade' })); // as OSM has Grajaú and Autódromo
+  assert.ok(reportsSpaces({ ...spot, operator: 'ViaQuatro' }));
+  assert.ok(!reportsSpaces({ ...spot, operator: 'CPTM' }));
+  assert.ok(!reportsSpaces({ ...spot, operator: undefined }));
+  assert.ok(!reportsSpaces({ ...spot, kind: 'paraciclo' }));
+  assert.ok(!reportsSpaces({ ...spot, capacity: undefined }));
+});
+
+test('spaceLevel: full at zero, few at 10% of the spaces or 5, whichever is more', () => {
+  assert.equal(spaceLevel(0, 80), 'full');
+  assert.equal(spaceLevel(1, 80), 'few');
+  assert.equal(spaceLevel(8, 80), 'few');
+  assert.equal(spaceLevel(9, 80), 'ok');
+  assert.equal(spaceLevel(5, 30), 'few'); // a small one: 10% would be 3
+  assert.equal(spaceLevel(6, 30), 'ok');
+  assert.equal(spaceLevel(26, 261), 'few');
+  assert.equal(spaceLevel(27, 261), 'ok');
+});
+
+test('the 24 h history ends at the current count, in 15-minute steps, within the capacity', async () => {
+  const spot = { kind: 'bicicletario', capacity: 80, operator: 'ViaQuatro', osm: 'way/1' };
+  const now = sp('2026-11-24T12:07');
+  const current = (await currentSpaces([spot], now))['way/1'];
+  const series = await spaceHistory(spot, now);
+  assert.equal(series.length, 97);
+  assert.equal(series.at(-1).at - series[0].at, 24 * 3_600_000);
+  assert.ok(series.every((s, i) => i === 0 || s.at - series[i - 1].at === 900_000));
+  assert.ok(series.every((s) => Number.isInteger(s.free) && s.free >= 0 && s.free <= 80));
+  assert.deepEqual({ at: current.at, free: current.free }, series.at(-1));
+  assert.equal(current.capacity, 80);
+  assert.equal(current.at, sp('2026-11-24T12:00').getTime());
+  // The same moment always gives the same numbers: the icon, popup and chart agree.
+  assert.deepEqual(await spaceHistory(spot, sp('2026-11-24T12:14')), series);
+});
+
+test('historySummary names the lowest and highest points in São Paulo time', () => {
+  const at = (hhmm) => sp(`2026-11-24T${hhmm}`).getTime();
+  const series = [{ at: at('04:30'), free: 64 }, { at: at('09:15'), free: 0 }, { at: at('12:00'), free: 12 }];
+  assert.equal(historySummary(series), 'Últimas 24 h: de 0 (09:15) a 64 vagas livres (04:30)');
+  assert.equal(historySummary([{ at: at('04:30'), free: 1 }, { at: at('04:45'), free: 1 }]), 'Últimas 24 h: sempre 1 vaga livre');
+  assert.match(historyChart(series, 80), /aria-label="Últimas 24 h: de 0 \(09:15\) a 64 vagas livres \(04:30\)"/);
+});
+
+test('the chart colours each stretch by the level it arrives at', () => {
+  const series = [40, 30, 8, 3, 0, 0, 5, 20].map((free, i) => ({ at: sp('2026-11-24T08:00').getTime() + i * 900_000, free }));
+  const runs = levelRuns(series, 80);
+  assert.deepEqual(runs.map((r) => [r.level, r.points.map((p) => p.free)]), [
+    ['ok', [40, 30]], ['few', [30, 8, 3]], ['full', [3, 0, 0]], ['few', [0, 5]], ['ok', [5, 20]],
+  ]);
+  const svg = historyChart(series, 80);
+  for (const level of ['ok', 'few', 'full']) assert.ok(svg.includes(`class="line ${level}"`) && svg.includes(`class="area ${level}"`));
+  assert.ok(svg.includes('class="now ok"')); // the last point: 20 free
+});
+
+test('simulated spaces: a working day empties the bicicletário by midday, a Sunday does not', async () => {
+  const spot = { kind: 'bicicletario', capacity: 100, operator: 'ViaQuatro', osm: 'way/2' };
+  const free = async (iso) => (await currentSpaces([spot], sp(iso)))['way/2'].free;
+  assert.ok(await free('2026-11-24T03:00') > 80); // Tuesday, before the first train
+  assert.ok(await free('2026-11-24T12:00') < 60);
+  assert.ok(await free('2026-11-29T12:00') > 60); // Sunday
 });

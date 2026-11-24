@@ -175,6 +175,16 @@ append `window.__map = map;`.
     elevations from amora's baked graph (`telhas.pedalhidrografi.co/viario/`). Must
     stay under Cloudflare Pages' 25 MiB file limit; the build refuses otherwise.
     - `parking.js`: bike parking access labels and open/closed status.
+    - `spaces.js`: free spaces at the bicicletários that count them, for now the
+      ViaQuatro and ViaMobilidade ones (Motiva, formerly CCR; `reportsSpaces()`): the
+      level rule (`spaceLevel()`: full at 0, few at ≤ 10% of the capacity or ≤ 5) and
+      the popup's 24 h chart (inline SVG coloured by level, a crosshair readout). **The numbers are
+      simulated** (`SIMULATED`; deterministic per spot and 15-minute step, São Paulo
+      time) until the operator's feed is integrated: that replaces the bodies of
+      `currentSpaces()` (all spots, polled every 60 s while bicicletários are shown)
+      and `spaceHistory()` (one spot, when its popup opens), both already async. The
+      popup, the legend and the Info tab say the data is simulated; keep that until
+      the real feed is in.
   - `data/bus-terminals.geojson`: **generated** (`-- terminals`, after `parking`) from
     GeoSampa `geoportal:terminal_onibus` (the source of truth for terminals, per the
     maintainer; don't patch in OSM ones) (SPTrans urban, EMTU metropolitan and coach
@@ -188,7 +198,8 @@ append `window.__map = map;`.
     from the EMTU feed (`scripts/emtu.mjs`). Lanes keep clear of the SPTrans routes
     (`assignLanes(…, { taken })`), so build `bus` first. Fares come from the feed.
     In app.js the EMTU lines live in `busLineByCode` with `agency: 'emtu'` and share
-    the bus route and live bus layers; vehicles are keyed by `busId()` because
+    the bus route and live bus code, each operator on its own layers
+    (`busRouteLayers`, `busLayers`); vehicles are keyed by `busId()` because
     prefixes are only unique per operator.
   - `data/*.geojson`: **generated** by `scripts/build-data.mjs`. Never edit by hand.
     Bus routes carry a precomputed `lane` (`scripts/lanes.mjs`).
@@ -347,14 +358,29 @@ it). The rules below are what the colours *mean*; the tokens hold the values.
   (from zoom 14), with a white inverted-U stand and a dark outline. Colour: green =
   free, no sign-up; blue = free with sign-up; pink = paid; grey = customers only;
   red = closed now (overrides the others).
+- **Free spaces** (bicicletários that count them, `spaces.js`): the count in a pill
+  under the house. With room, the house keeps its access colour and the pill is dark;
+  yellow house and pill = few left, orange = full (`map.parking.few`, `.full`), both
+  with a dark stand and dark figures (white doesn't read there). The pill carries the
+  colour too because station icons often cover the house. Closed: red and slashed as
+  usual, no count. The popup has the count and the last 24 h as a chart, each stretch
+  in the colour of its level (blue, yellow, orange; a key appears when spaces ran
+  short, and the readout names the level).
+- **The parking popup** shows "Com cadastro" without the sentence explaining the
+  sign-up (removed 2026-11 by the maintainer); a terminal's popup still has it.
 - **Bus terminals:** a bus under a roof on a rounded square, coloured by operator
   (`map.terminal.sptrans`, `.emtu`, `.coach`).
 - **Low-floor buses:** small blue dots with a white ring, all lines (`map.bus.low-floor`).
 - **Rail casing** (`map.rail.casing`) is the same dark tone on both maps: map tokens
   don't change with the colour scheme.
-- **Layer control:** two tabs. Camadas: base map, topo, and toggles for rail lines,
-  stations and terminals, bus routes, live buses, bike parking and the
-  low-floor buses (opt-in). Legenda: the colour and shape key (the menu has none).
+- **Layer control:** Camadas: base map, topo, and toggles for rail lines, stations and
+  terminals, SPTrans buses, EMTU buses, bicicletários, paraciclos and the low-floor
+  buses; EMTU, paraciclos and low-floor are opt-in (`OPT_IN` in app.js, kept in
+  `shownLayers`; the rest in `hiddenLayers`). A bus toggle covers that operator's
+  routes and live vehicles (`busGroups`). The layers an intent turns on are in
+  `INTENTS` (intent.js): keep its keys in step with `TOGGLES`. Picking a line in the
+  menu turns its operator's layer on. Legenda: the colour and shape key (the menu has
+  none).
 - **The tapped bus** is drawn bigger with a thicker outline while its popup is open;
   its line's other buses stay solid and the rest fade: other bus lines, rail lines
   (except those of a planned trip), stations, terminals and bike parking

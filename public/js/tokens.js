@@ -184,6 +184,8 @@ export const tokens = {
       "signup": "#2563eb",
       "paid": "#db2777",
       "customers": "#78716c",
+      "few": "#eab308",
+      "full": "#f97316",
       "closed": "#dc2626"
     },
     "terminal": {
@@ -229,7 +231,8 @@ export const tokens = {
       "tracking": {
         "leg": "0.5px"
       },
-      "badge": "700 10px/1 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+      "badge": "700 10px/1 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "spaces": "700 12px/1 system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
     }
   },
   "brand": {

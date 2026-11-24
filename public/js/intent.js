@@ -14,8 +14,8 @@ import { toast } from './ui.js';
 const KEY = 'intent';
 const EVERY = 'welcomeEvery';
 export const INTENTS = {
-  explore: { label: 'Explorar o entorno', layers: ['rail', 'stations', 'busRoutes', 'buses', 'parking'] },
-  bike: { label: 'Chegar num lugar de bicicleta', layers: ['rail', 'stations', 'busRoutes', 'buses', 'parking'] },
+  explore: { label: 'Explorar o entorno', layers: ['rail', 'stations', 'sptrans', 'bicicletarios'] },
+  bike: { label: 'Chegar num lugar de bicicleta', layers: ['rail', 'stations', 'sptrans', 'bicicletarios'] },
   access: { label: 'Chegar num lugar com acessibilidade', layers: ['stations', 'lowFloor'] },
 };
 

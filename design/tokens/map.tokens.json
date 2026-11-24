@@ -196,6 +196,28 @@
           }
         }
       },
+      "few": {
+        "$value": "{ref.color.yellow.500}",
+        "$description": "Bicicletário que conta as vagas: restam poucas (10% ou menos). O suporte do ícone fica escuro, e o número de vagas embaixo vem na mesma cor.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "fill"
+            ]
+          }
+        }
+      },
+      "full": {
+        "$value": "{ref.color.orange.500}",
+        "$description": "Bicicletário que conta as vagas: lotado, nenhuma vaga livre. O suporte do ícone fica escuro, e o 0 embaixo vem na mesma cor.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "fill"
+            ]
+          }
+        }
+      },
       "closed": {
         "$value": "{ref.color.red.600}",
         "$description": "Fechado agora, pelo horário do OpenStreetMap. Vence as outras cores e ganha uma barra diagonal.",
@@ -269,18 +291,31 @@
     "icon": {
       "ink": {
         "$value": "{ref.color.stone.900}",
-        "$description": "Contorno escuro dos ícones do mapa. Destaca o verde de um bicicletário sobre o verde de um itinerário, sem sombra (que pesa no celular).",
+        "$description": "Contorno escuro dos ícones do mapa. Destaca o verde de um bicicletário sobre o verde de um itinerário, sem sombra (que pesa no celular). Também o suporte do bicicletário com poucas vagas ou lotado (o branco não lê sobre amarelo e laranja), e o número de vagas livres: fundo escuro quando há vagas, algarismos escuros sobre o amarelo e o laranja.",
         "$extensions": {
           "info.bicisampa": {
             "usage": [
-              "outline"
+              "outline",
+              "icon",
+              "background",
+              "text"
+            ],
+            "contrast": [
+              {
+                "against": "map.parking.few",
+                "min": 4.5
+              },
+              {
+                "against": "map.parking.full",
+                "min": 4.5
+              }
             ]
           }
         }
       },
       "on": {
         "$value": "{ref.color.white}",
-        "$description": "Símbolos e halos brancos: seta do ônibus, suporte do paraciclo, contorno das estações, texto dos rótulos da rota.",
+        "$description": "Símbolos e halos brancos: seta do ônibus, suporte do paraciclo, contorno das estações, texto dos rótulos da rota, número de vagas livres sob o bicicletário.",
         "$extensions": {
           "info.bicisampa": {
             "usage": [
@@ -338,6 +373,10 @@
               {
                 "against": "map.parking.closed",
                 "min": 3
+              },
+              {
+                "against": "map.icon.ink",
+                "min": 4.5
               }
             ]
           }
@@ -596,6 +635,24 @@
           "lineHeight": "{ref.font.line-height.none}"
         },
         "$description": "Número 1, 2… nos ícones de trecho quando há mais de uma condução do mesmo tipo.",
+        "$extensions": {
+          "info.bicisampa": {
+            "usage": [
+              "font"
+            ]
+          }
+        }
+      },
+      "spaces": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{ref.font.family.system}",
+          "fontSize": "{ref.font.size.12}",
+          "fontWeight": "{ref.font.weight.700}",
+          "letterSpacing": "{ref.font.tracking.none}",
+          "lineHeight": "{ref.font.line-height.none}"
+        },
+        "$description": "Número de vagas livres sob o ícone de um bicicletário que as conta.",
         "$extensions": {
           "info.bicisampa": {
             "usage": [

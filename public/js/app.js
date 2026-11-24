@@ -4,6 +4,7 @@ import { headingOfMove, headingOnRoute, iconTransform } from './heading.js';
 import { DEFAULT_VIEW, initLocate } from './locate.js';
 import { offsetPolylineClass } from './offset.js';
 import { ACCESS, parkingStatus } from './parking.js';
+import { currentSpaces, freeText, LEVEL_LABEL, mountHistory, reportsSpaces, SIMULATED, spaceHistory, spaceLevel, spotId } from './spaces.js';
 import { initIntent } from './intent.js';
 import { initPlanner } from './planner.js';
 import { railStatus as lineStatus } from './rail.js';
@@ -16,6 +17,7 @@ import { initSheets, initTabs, initUpdates, setSheetOpen, sheetInsets, toast } f
 const RAIL_REFRESH_MS = 60_000;
 const BUS_REFRESH_MS = 20_000;
 const CLOCK_REFRESH_MS = 15_000;
+const SPACES_REFRESH_MS = 60_000;
 
 // Colours are design tokens (design/tokens/map.tokens.json, DESIGN.md).
 const MAP = tokens.map;
@@ -199,21 +201,30 @@ markerPane('stations').style.zIndex = 420;
 
 const trackLayer = L.layerGroup();
 const stationLayer = L.layerGroup();
-const busRouteLayer = L.layerGroup();
-const busLayer = L.layerGroup();
+// Bus routes and live vehicles per operator ('sptrans' or 'emtu'): each operator is one
+// toggle, a group holding both.
+const agencyOf = (x) => (isEmtu(x) ? 'emtu' : 'sptrans');
+const busRouteLayers = { sptrans: L.layerGroup(), emtu: L.layerGroup() };
+const busLayers = { sptrans: L.layerGroup(), emtu: L.layerGroup() };
+const busGroups = {
+  sptrans: L.layerGroup([busRouteLayers.sptrans, busLayers.sptrans]),
+  emtu: L.layerGroup([busRouteLayers.emtu, busLayers.emtu]),
+};
 const lowFloorLayer = L.layerGroup();
 const bicicletarioLayer = L.layerGroup();
 const paracicloLayer = L.layerGroup();
 
-// Stations and bike parking only appear when zoomed in, inside a group the
+// Stations and bike parking only appear when zoomed in, each inside a group the
 // user can toggle. Bicicletários (few, big) show up before paraciclos (many, small).
 const stationGroup = L.layerGroup();
-const parkingGroup = L.layerGroup();
+const bicicletarioGroup = L.layerGroup();
+const paracicloGroup = L.layerGroup();
 const PARKING_MIN_ZOOM = 12;
+const PARACICLO_MIN_ZOOM = 14;
 const ZOOMED_LAYERS = [
   [stationLayer, stationGroup, 12],
-  [bicicletarioLayer, parkingGroup, PARKING_MIN_ZOOM],
-  [paracicloLayer, parkingGroup, 14],
+  [bicicletarioLayer, bicicletarioGroup, PARKING_MIN_ZOOM],
+  [paracicloLayer, paracicloGroup, PARACICLO_MIN_ZOOM],
 ];
 
 function updateZoomedLayers() {
@@ -227,17 +238,22 @@ function updateZoomedLayers() {
 const TOGGLES = [
   ['rail', 'Metrô e trens', trackLayer],
   ['stations', 'Estações e terminais', stationGroup],
-  ['busRoutes', 'Itinerários de ônibus', busRouteLayer],
-  ['buses', 'Ônibus ao vivo', busLayer],
-  ['parking', 'Bicicletários e paraciclos', parkingGroup],
+  ['sptrans', 'Ônibus (SPTrans)', busGroups.sptrans],
+  ['emtu', 'Ônibus (EMTU)', busGroups.emtu],
+  ['bicicletarios', 'Bicicletários', bicicletarioGroup],
+  ['paraciclos', 'Paraciclos', paracicloGroup],
   ['lowFloor', 'Ônibus de piso baixo (todas as linhas)', lowFloorLayer],
 ];
 // Layers that start off; the user's choice is kept in 'shownLayers' instead of 'hiddenLayers'.
-const OPT_IN = new Set(['lowFloor']);
+const OPT_IN = new Set(['emtu', 'paraciclos', 'lowFloor']);
 
 let hidden = [], shown = [];
 try { hidden = JSON.parse(localStorage.getItem('hiddenLayers') ?? '[]'); } catch {}
 try { shown = JSON.parse(localStorage.getItem('shownLayers') ?? '[]'); } catch {}
+// Choices saved before the layers were split (buses by operator, parking by kind):
+// what was hidden stays hidden.
+if (hidden.includes('parking')) hidden.push('bicicletarios');
+if (hidden.includes('busRoutes') && hidden.includes('buses')) hidden.push('sptrans');
 for (const [key, , layer] of TOGGLES) if (OPT_IN.has(key) ? shown.includes(key) : !hidden.includes(key)) layer.addTo(map);
 
 function rememberLayers() {
@@ -572,7 +588,11 @@ const HIGHLIGHT_PX = 5;
 const isHighlighted = (r) => highlighted && r.lineCode === highlighted.code
   && (highlighted.sentido == null || r.sentido === highlighted.sentido);
 const weightOf = (r) => routeWeight(map.getZoom()) + (isHighlighted(r) ? HIGHLIGHT_PX : 0);
-map.on('zoomend', () => busRouteLayer.eachLayer((r) => r.setStyle({ weight: weightOf(r) })));
+/** Every bus route drawn, of both operators, whether its layer is shown or not. */
+function* busRoutes() {
+  for (const line of busLineByCode.values()) yield* line.routes;
+}
+map.on('zoomend', () => { for (const r of busRoutes()) r.setStyle({ weight: weightOf(r) }); });
 
 function addRoute(line, sentido, coordinates, lane, headsign) {
   const latlngs = coordinates.map(([lon, lat]) => [lat, lon]);
@@ -587,7 +607,7 @@ function addRoute(line, sentido, coordinates, lane, headsign) {
   }).bindTooltip(`${esc(line.code)}${headsign ? ` → ${esc(headsign)}` : ''}`, { sticky: true });
   route.lineCode = line.code;
   route.sentido = sentido;
-  busRouteLayer.addLayer(route);
+  busRouteLayers[agencyOf(line)].addLayer(route);
   if (isHighlighted(route)) { route.setStyle({ weight: weightOf(route) }); route.bringToFront(); }
   line.routes.push(route);
   line.bounds = line.bounds ? line.bounds.extend(route.getBounds()) : route.getBounds();
@@ -619,7 +639,7 @@ async function loadUnusualRoute(line) {
 }
 
 function dropUnusualLine(line) {
-  for (const r of line.routes) busRouteLayer.removeLayer(r);
+  for (const r of line.routes) busRouteLayers[agencyOf(line)].removeLayer(r);
   busLineByCode.delete(line.code);
 }
 
@@ -780,12 +800,13 @@ function renderBusMarkers(s) {
 function syncBusMarkers() {
   const s = busStatusNow;
   if (!s) return;
-  const view = map.hasLayer(busLayer) && map.getZoom() >= BUS_MIN_ZOOM ? map.getBounds().pad(0.2) : null;
+  const view = map.getZoom() >= BUS_MIN_ZOOM ? map.getBounds().pad(0.2) : null;
   const shown = new Set();
   if (view) {
     const bearing = map.getBearing();
     for (const [id, bus] of busById) {
-      if (!view.contains([bus.lat, bus.lon])) continue;
+      const layer = busLayers[agencyOf(bus)];
+      if (!map.hasLayer(layer) || !view.contains([bus.lat, bus.lon])) continue;
       shown.add(id);
       const icon = busIcon(isEmtu(bus) ? 'emtu' : s.status, !bus.expected);
       let marker = busMarkers.get(id);
@@ -794,7 +815,7 @@ function syncBusMarkers() {
           .bindPopup(() => busPopup(busById.get(id) ?? bus, busStatusNow))
           .on('popupopen', () => highlightBus(busById.get(id) ?? bus))
           .on('popupclose', () => highlightBus(null))
-          .addTo(busLayer);
+          .addTo(layer);
         busMarkers.set(id, marker);
       } else {
         marker.setLatLng([bus.lat, bus.lon]);
@@ -813,17 +834,19 @@ function syncBusMarkers() {
   }
   for (const [id, marker] of busMarkers) {
     if (!shown.has(id)) {
-      marker.remove();
+      // Out of its group too, or the group would bring it back when toggled on again.
+      for (const layer of Object.values(busLayers)) layer.removeLayer(marker);
       busMarkers.delete(id);
     }
   }
 }
-map.on('moveend overlayadd', syncBusMarkers);
+map.on('moveend overlayadd overlayremove', syncBusMarkers);
 
 async function showBusLine(e) {
   const code = e.target.closest('li[data-code]')?.dataset.code;
   const line = busLineByCode.get(code);
   if (!line) return;
+  showLayer(agencyOf(line)); // picked from the menu: its operator's layer may be off
   if (line.unusual) await loadUnusualRoute(line);
   let bounds = line.bounds;
   for (const b of state.buses.filter((x) => x.line === code)) bounds = bounds ? bounds.extend([b.lat, b.lon]) : L.latLngBounds([[b.lat, b.lon]]);
@@ -923,32 +946,41 @@ map.on('moveend overlayadd', () => {
 
 // Colour = can I leave my bike here now, and on what terms. Shape = kind: a circle
 // for a paraciclo (stands), a house for a bicicletário (covered, usually staffed).
-const PARKING_COLORS = { livre: MAP.parking.free, cadastro: MAP.parking.signup, pago: MAP.parking.paid, clientes: MAP.parking.customers, closed: MAP.parking.closed };
+// A bicicletário that counts its free spaces (spaces.js) turns yellow when few are left
+// and orange when full, with the count under the icon, in the same colour: station
+// icons often cover the house, and the count has to tell on its own.
+const PARKING_COLORS = {
+  livre: MAP.parking.free, cadastro: MAP.parking.signup, pago: MAP.parking.paid, clientes: MAP.parking.customers,
+  few: MAP.parking.few, full: MAP.parking.full, closed: MAP.parking.closed,
+};
 // A white inverted-U stand (the paraciclo symbol) in a circle or a house, outlined in
-// dark ink like the bus icons so green spots stand out on green bus routes.
+// dark ink like the bus icons so green spots stand out on green bus routes. On yellow
+// and orange the stand is dark: white doesn't read there.
+const DARK_STAND = new Set(['few', 'full']);
 const PARKING_SHAPES = {
   paraciclo: { size: 20, outline: '<circle cx="12" cy="12" r="10"/>', stand: 0 },
   bicicletario: { size: 25, outline: '<path d="M12 1.6 22.6 10.2V21a1.4 1.4 0 0 1-1.4 1.4H2.8A1.4 1.4 0 0 1 1.4 21V10.2Z"/>', stand: 1.6 },
 };
 // Closed spots also get a diagonal bar, so "closed" doesn't rely on red alone.
-const parkingSvg = (kind, fill, closed = false) => {
+const parkingSvg = (kind, fill, closed = false, standColor = MAP.icon.on) => {
   const { size, outline, stand } = PARKING_SHAPES[kind];
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
     <g fill="${fill}" stroke="${MAP.icon.ink}" stroke-width="1.6">${outline}</g>
-    <path d="M8.6 16.4V11.4a3.4 3.4 0 0 1 6.8 0v5M6.6 16.6h10.8" transform="translate(0 ${stand})" fill="none" stroke="${MAP.icon.on}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M8.6 16.4V11.4a3.4 3.4 0 0 1 6.8 0v5M6.6 16.6h10.8" transform="translate(0 ${stand})" fill="none" stroke="${standColor}" stroke-width="2.2" stroke-linecap="round"/>
     ${closed ? `<path d="M4.5 19.5 19.5 4.5" stroke="${MAP.icon.ink}" stroke-width="4.2" stroke-linecap="round"/><path d="M4.5 19.5 19.5 4.5" stroke="${MAP.icon.on}" stroke-width="2" stroke-linecap="round"/>` : ''}
   </svg>`;
 };
 for (const el of document.querySelectorAll('[data-parking-shape]')) el.innerHTML = parkingSvg(el.dataset.parkingShape, MAP.parking.customers);
 
 const parkingIcons = new Map();
-function parkingIcon(kind, colorKey) {
-  const key = `${kind}|${colorKey}`;
+/** `free`: the count to write under the icon (bicicletários that report it), or null. */
+function parkingIcon(kind, colorKey, free = null) {
+  const key = `${kind}|${colorKey}|${free ?? ''}`;
   if (!parkingIcons.has(key)) {
-    const { size } = PARKING_SHAPES[kind];
     parkingIcons.set(key, L.divIcon({
       className: 'parking-icon',
-      html: parkingSvg(kind, PARKING_COLORS[colorKey], colorKey === 'closed'),
+      html: parkingSvg(kind, PARKING_COLORS[colorKey], colorKey === 'closed', DARK_STAND.has(colorKey) ? MAP.icon.ink : MAP.icon.on)
+        + (free == null ? '' : `<span class="parking-spaces${DARK_STAND.has(colorKey) ? ` ${colorKey}` : ''}">${free}</span>`),
       iconSize: [36, 36], // tap target around the icon
       iconAnchor: [18, 18],
     }));
@@ -956,24 +988,58 @@ function parkingIcon(kind, colorKey) {
   return parkingIcons.get(key);
 }
 
+// Free spaces by spotId, from the last refreshSpaces(); empty until then, or without a feed.
+let spaces = {};
+
+/** The free spaces of a spot that reports them, in its popup: the count, then the last 24 h. */
+function spacesHtml(p) {
+  const now = spaces[spotId(p)];
+  if (!now) return '';
+  const level = spaceLevel(now.free, now.capacity);
+  const text = level === 'ok' ? `<b>${freeText(now.free)}</b> de ${now.capacity}`
+    : `<b>${LEVEL_LABEL[level]}</b> · ${now.free} de ${now.capacity} vagas livres`;
+  return `<p><span class="dot inline" style="background:${PARKING_COLORS[level === 'ok' ? p.access : level]}"></span> ${text}</p>
+    <div class="spaces-chart" data-spaces-chart>Carregando as últimas 24 h…</div>
+    ${SIMULATED ? '<p class="meta source">Vagas livres: dados simulados, em teste</p>' : ''}`;
+}
+
+/** Fills the chart of an open parking popup (the history is fetched when it opens). */
+async function loadSpacesChart(popup, p) {
+  const el = popup.getElement()?.querySelector('[data-spaces-chart]');
+  if (!el) return;
+  try {
+    const series = await spaceHistory(p);
+    if (el.isConnected) mountHistory(el, series, p.capacity);
+  } catch (err) {
+    console.warn('free spaces history unavailable', err);
+    el.textContent = 'Sem histórico agora';
+  }
+}
+
 function parkingPopup(p) {
   const s = parkingStatus(p);
   const facts = [p.operator, p.capacity && `${p.capacity} vagas`, p.covered && 'coberto'].filter(Boolean);
+  // "Com cadastro" goes without its explanation here (the maintainer's choice, 2026-11);
+  // a terminal's popup still gives it for the bicicletário nearby.
+  const notes = [p.access !== 'cadastro' && ACCESS[p.access].detail, p.biometric && 'Entrada com biometria.'].filter(Boolean);
   const source = p.osm
     ? `<a href="https://www.openstreetmap.org/${esc(p.osm)}" target="_blank" rel="noopener">OpenStreetMap</a>`
     : 'GeoSampa (Prefeitura de SP)';
   return `<h3>${esc(p.name ?? (p.kind === 'bicicletario' ? 'Bicicletário' : 'Paraciclo'))}</h3>
     ${facts.length ? `<p class="first meta">${esc(facts.join(' · '))}</p>` : ''}
-    <p><span class="dot inline" style="background:${PARKING_COLORS[p.access]}"></span> <b>${ACCESS[p.access].label}</b><br>${esc(ACCESS[p.access].detail)}${p.biometric ? ' Entrada com biometria.' : ''}</p>
+    <p><span class="dot inline" style="background:${PARKING_COLORS[p.access]}"></span> <b>${ACCESS[p.access].label}</b>${notes.length ? `<br>${esc(notes.join(' '))}` : ''}</p>
     ${s.detail ? `<p>${s.open === false ? '<span class="dot inline closed"></span> ' : ''}${esc(s.detail)}</p>` : ''}
+    ${spacesHtml(p)}
     <p class="meta source">Fonte: ${source}</p>`;
 }
 
-const parkingMarkers = []; // [{ marker, props }]
+const parkingMarkers = []; // [{ marker, props, layer }]
 let parkingLoading = null;
+const bicicletariosShown = () => map.hasLayer(bicicletarioGroup) && map.getZoom() >= PARKING_MIN_ZOOM;
+const paraciclosShown = () => map.hasLayer(paracicloGroup) && map.getZoom() >= PARACICLO_MIN_ZOOM;
 
 function loadParking() {
-  if (!map.hasLayer(parkingGroup) || map.getZoom() < PARKING_MIN_ZOOM) return;
+  if (!bicicletariosShown() && !paraciclosShown()) return;
   parkingLoading ??= getJson('data/bike-parking.geojson')
     .then((geo) => {
       for (const { properties: props, geometry } of geo.features) {
@@ -981,12 +1047,13 @@ function loadParking() {
         const marker = L.marker([lat, lon], { pane: 'parking', keyboard: false, icon: parkingIcon(props.kind, 'livre') })
           .bindTooltip(esc(props.name ?? (props.kind === 'bicicletario' ? 'Bicicletário' : 'Paraciclo')), { direction: 'top', offset: [0, -10] })
           .bindPopup(() => parkingPopup(props))
-          .on('popupopen', (e) => focusSpot([], e.target))
+          .on('popupopen', (e) => { focusSpot([], e.target); loadSpacesChart(e.popup, props); })
           .on('popupclose', () => focusSpot(null));
         parkingMarkers.push({ marker, props, layer: props.kind === 'bicicletario' ? bicicletarioLayer : paracicloLayer });
       }
       renderParking();
       showParkingInView();
+      refreshSpaces();
     })
     .catch((err) => console.warn('bike parking unavailable', err));
 }
@@ -994,24 +1061,52 @@ map.on('zoomend overlayadd', loadParking);
 
 // Like the live buses, only the parking spots in view are on the map.
 function showParkingInView() {
-  if (!parkingMarkers.length || map.getZoom() < PARKING_MIN_ZOOM) return;
+  if (!parkingMarkers.length) return;
   const view = map.getBounds().pad(0.25);
+  const shown = new Map([[bicicletarioLayer, bicicletariosShown()], [paracicloLayer, paraciclosShown()]]);
   for (const { marker, layer } of parkingMarkers) {
-    const inView = view.contains(marker.getLatLng());
+    const inView = shown.get(layer) && view.contains(marker.getLatLng());
     if (inView && !layer.hasLayer(marker)) layer.addLayer(marker);
     else if (!inView && layer.hasLayer(marker)) layer.removeLayer(marker);
   }
 }
-map.on('moveend', showParkingInView);
+map.on('moveend overlayadd', showParkingInView);
 
-/** Recolours the parking markers that opened or closed since the last call. */
+/**
+ * Redraws the parking markers that changed since the last call: opened or closed, or a
+ * new count of free spaces. A closed one shows no count: nobody can park there now.
+ */
 function renderParking() {
   const now = new Date();
   for (const { marker, props } of parkingMarkers) {
-    const icon = parkingIcon(props.kind, parkingStatus(props, now).colorKey);
+    const status = parkingStatus(props, now);
+    const free = status.open === false ? null : spaces[spotId(props)];
+    const level = free ? spaceLevel(free.free, free.capacity) : 'ok';
+    const icon = parkingIcon(props.kind, level === 'ok' ? status.colorKey : level, free?.free);
     if (marker.options.icon !== icon) marker.setIcon(icon);
   }
 }
+
+/** Fetches the free spaces of the bicicletários that report them, while they're on the map. */
+let spacesBusy = false;
+let spacesAt = 0;
+async function refreshSpaces() {
+  const spots = parkingMarkers.filter(({ props }) => reportsSpaces(props)).map(({ props }) => props);
+  if (!spots.length || !bicicletariosShown() || spacesBusy || document.hidden) return;
+  spacesBusy = true;
+  try {
+    spaces = await currentSpaces(spots);
+    spacesAt = Date.now();
+  } catch (err) {
+    console.warn('free spaces unavailable', err);
+    spaces = {}; // no count is better than an old one
+  } finally {
+    spacesBusy = false;
+  }
+  renderParking();
+}
+// Back on the map after being hidden or zoomed out: don't wait for the next round.
+map.on('zoomend overlayadd', () => { if (Date.now() - spacesAt > SPACES_REFRESH_MS) refreshSpaces(); });
 
 // ---------------------------------------------------------------- clock & panel
 
@@ -1077,7 +1172,7 @@ function highlightBus(bus) {
   // Stations, terminals and bike parking fade too (style.css), as with a planned route.
   map.getContainer().classList.toggle('bus-focus', !!line);
   applyFocus();
-  for (const r of busRouteLayer.getLayers()) {
+  for (const r of busRoutes()) {
     r.setStyle({ weight: weightOf(r) });
     if (isHighlighted(r)) r.bringToFront();
   }
@@ -1106,6 +1201,16 @@ initPlanner({
   railLines: lineByRef,
   getBuses: () => (state.busesLoaded && !state.busError ? state.buses : null),
 });
+
+/** Turns on one overlay layer (a TOGGLES key) that may be off, and remembers that. */
+function showLayer(key) {
+  const layer = TOGGLES.find(([k]) => k === key)[2];
+  if (map.hasLayer(layer)) return;
+  layer.addTo(map);
+  map.fire('overlayadd', { layer });
+  rememberLayers();
+  buildLayerRows();
+}
 
 /** Shows exactly the overlay layers in `keys` (TOGGLES keys), and remembers that. */
 function setLayers(keys) {
@@ -1154,4 +1259,5 @@ setInterval(() => { renderClock(); renderRail(); renderParking(); }, CLOCK_REFRE
 setInterval(refreshLive, RAIL_REFRESH_MS);
 setInterval(refreshBuses, BUS_REFRESH_MS);
 setInterval(refreshLowFloor, BUS_REFRESH_MS);
+setInterval(refreshSpaces, SPACES_REFRESH_MS);
 refreshLowFloor();

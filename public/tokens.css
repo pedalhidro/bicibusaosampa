@@ -155,6 +155,8 @@
   --map-parking-signup: var(--ref-color-blue-600);
   --map-parking-paid: var(--ref-color-pink-600);
   --map-parking-customers: var(--ref-color-stone-500);
+  --map-parking-few: var(--ref-color-yellow-500);
+  --map-parking-full: var(--ref-color-orange-500);
   --map-parking-closed: var(--ref-color-red-600);
   --map-terminal-sptrans: var(--ref-color-slate-700);
   --map-terminal-emtu: var(--ref-color-cyan-700);
@@ -182,6 +184,8 @@
   --map-label-tracking-leg: var(--ref-font-tracking-wide);
   --map-label-badge: var(--ref-font-weight-700) var(--ref-font-size-10)/var(--ref-font-line-height-none) var(--ref-font-family-system);
   --map-label-badge-tracking: var(--ref-font-tracking-none);
+  --map-label-spaces: var(--ref-font-weight-700) var(--ref-font-size-12)/var(--ref-font-line-height-none) var(--ref-font-family-system);
+  --map-label-spaces-tracking: var(--ref-font-tracking-none);
   --brand-theme: var(--ref-color-teal-700);
   --brand-splash: var(--ref-color-teal-700);
   --ui-surface-page: var(--ref-color-white);
